@@ -709,6 +709,26 @@ def generate_ai_recommendations(df_calc, total_emissions_kg, global_gco2pm):
         })
     
     return recommendations
+def is_valid_row(row: pd.Series) -> bool:
+    """
+    Détecte si une ligne est une ligne de données valide 
+    ou une ligne de métadonnées/footer (DV360, etc.)
+    """
+    # Convertis la ligne en string
+    row_str = ' '.join(str(x) for x in row if pd.notna(x)).lower()
+    
+    # Keywords qui indiquent une ligne de métadonnées
+    footer_keywords = [
+        'report time:', 'date range:', 'group by:', 'filter by:',
+        'mrc accredited', 'active view metrics', 'reporting numbers',
+        'total impressions', 'grand total', 'advertiser id:', 'partner id:',
+        'report generated', 'time zone', 'currency'
+    ]
+    
+    if any(k in row_str for k in footer_keywords):
+        return False
+    
+    return True
 
 def detect_columns(df):
     """Auto-detect critical columns from dataframe"""
@@ -866,6 +886,61 @@ def create_professional_excel(df_calc, scenarios, recommendations, total_imps, t
         ws["A1"] = f"{sheet_name} (Data coming...)"
     
     return wb
+
+def clean_dataframe(df: pd.DataFrame, col_imps: str | None) -> pd.DataFrame:
+    """
+    Nettoie le DataFrame en profondeur :
+    - Supprime les lignes de métadonnées
+    - Supprime les lignes avec impressions NaN ou 0
+    - Déduplique
+    - Détecte et supprime les TOTAL rows
+    
+    Retourne un DataFrame propre prêt pour le calcul.
+    """
+    from constants import safe_float
+    
+    st.info("🧹 Cleaning data...")
+    
+    pre_rows = len(df)
+    
+    # 1. Supprime les lignes de métadonnées (Report Time, Date Range, etc.)
+    df = df[df.apply(is_valid_row, axis=1)].reset_index(drop=True)
+    metadata_removed = pre_rows - len(df)
+    if metadata_removed > 0:
+        st.success(f"   ✅ Removed {metadata_removed} metadata/footer rows")
+    
+    # 2. Supprime les lignes avec Impressions NaN ou 0
+    if col_imps and col_imps in df.columns:
+        pre_clean_rows = len(df)
+        df = df.dropna(subset=[col_imps])
+        df = df[df[col_imps].apply(lambda x: safe_float(x, 0.0)) > 0].reset_index(drop=True)
+        
+        invalid_removed = pre_clean_rows - len(df)
+        if invalid_removed > 0:
+            st.success(f"   ✅ Removed {invalid_removed} rows with invalid/zero impressions")
+    
+    # 3. Déduplique
+    pre_dedupe_rows = len(df)
+    df = df.drop_duplicates().reset_index(drop=True)
+    
+    dedupe_removed = pre_dedupe_rows - len(df)
+    if dedupe_removed > 0:
+        st.success(f"   ✅ Removed {dedupe_removed} duplicate rows")
+    
+    # 4. Détecte et supprime TOTAL row
+    if col_imps and col_imps in df.columns:
+        df[col_imps] = df[col_imps].apply(lambda x: safe_float(x, 0.0))
+        total_imps_sum = df[col_imps].sum()
+        max_imps_row = df[col_imps].max()
+        
+        if total_imps_sum > 0 and len(df) > 10:
+            if max_imps_row > 0.4 * total_imps_sum:
+                st.warning(f"   ⚠️ Detected potential TOTAL row with {max_imps_row:,.0f} imps")
+                st.warning("      Removing this outlier row...")
+                df = df[df[col_imps] != max_imps_row].reset_index(drop=True)
+    
+    st.success(f"✅ Data cleaned: {len(df):,} rows ready for analysis")
+    return df
 
 # ═══════════════════════════════════════════════════════════════════════════
 # MAIN APP
