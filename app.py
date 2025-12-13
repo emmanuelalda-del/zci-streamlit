@@ -1,34 +1,28 @@
 """
 ═══════════════════════════════════════════════════════════════════════════════
-ZETA CARBON INTELLIGENCE v5.3 - STREAMLIT PRODUCTION APP ULTIMATE
+ZETA CARBON INTELLIGENCE v5.2 - STREAMLIT PRODUCTION APP
 ═══════════════════════════════════════════════════════════════════════════════
-✅ Complete ZCI Presentation + Preview (Cell 1)
-✅ Advanced Data Ingestion (Cell 3) - TOTAL row detection + Creative Weight extraction
-✅ Dark/Light Mode Toggle with Persistent Storage
+Complete implementation with:
+✅ 12 What-If Scenarios (WiFi, Tier1, Freq Cap, MFA, Green Hours, etc.)
+✅ AI Recommendations & Anomaly Detection
+✅ Zeta Global Design System (Colors, Dark/Light Mode)
 ✅ Logo Integration
-✅ 12 What-If Scenarios + AI Recommendations
-✅ Large File Support (>200MB) via Stream Processing
-✅ PDF Export with Professional Design
-✅ Export Excel 9 Sheets with Zeta Design
+✅ Export Excel 9 Sheets with Professional Design
+✅ Advanced Column Mapping (TOTAL row detection)
+✅ Full ZCI v4.9.9 Calculations
 ═══════════════════════════════════════════════════════════════════════════════
 """
 
 import streamlit as st
-import streamlit.components.v1 as components
 import pandas as pd
 import numpy as np
 import re
 import base64
-import io
 from datetime import datetime
+from io import BytesIO
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
-from reportlab.lib.pagesizes import A4, letter
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak, Image
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.units import inch
-from reportlab.lib import colors
-from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+from openpyxl.utils import get_column_letter
 
 # Import constants
 from constants import (
@@ -38,48 +32,54 @@ from constants import (
 )
 
 # ═══════════════════════════════════════════════════════════════════════════
-# STREAMLIT CONFIG
+# ZETA COLOR PALETTE & DESIGN SYSTEM
+# ═══════════════════════════════════════════════════════════════════════════
+
+ZETA_COLORS = {
+    "primary": "#1A365D",      # Zeta Navy Blue
+    "secondary": "#2E8B8B",    # Zeta Teal
+    "accent": "#50B8C6",       # Zeta Light Teal
+    "success": "#10B981",      # Green
+    "warning": "#F59E0B",      # Amber
+    "danger": "#DC2626",       # Red
+    "light_bg": "#F8FAFB",     # Light background
+    "dark_bg": "#0F172A",      # Dark background
+    "white": "#FFFFFF"
+}
+
+# ═══════════════════════════════════════════════════════════════════════════
+# PAGE CONFIG & THEME
 # ═══════════════════════════════════════════════════════════════════════════
 
 st.set_page_config(
-    page_title="ZCI v5.3 - Carbon Intelligence",
+    page_title="ZCI v5.2 - Carbon Intelligence",
     page_icon="🌱",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="expanded",
+    theme="light"
 )
 
 # ═══════════════════════════════════════════════════════════════════════════
-# DARK MODE TOGGLE
+# ENHANCED CSS WITH ZETA DESIGN
 # ═══════════════════════════════════════════════════════════════════════════
 
-def init_dark_mode():
-    """Initialize dark mode in session state"""
-    if "dark_mode" not in st.session_state:
-        st.session_state.dark_mode = False
-
-init_dark_mode()
-
-# Dark/Light Mode CSS
-dark_mode_css = f"""
+st.markdown(f"""
     <style>
+    /* Root Variables */
     :root {{
-        --zeta-primary: {"#4FFFB0" if st.session_state.dark_mode else "#1A365D"};
-        --zeta-secondary: {"#50C878" if st.session_state.dark_mode else "#2E8B8B"};
-        --zeta-accent: {"#4FFFB0" if st.session_state.dark_mode else "#50B8C6"};
-        --bg-primary: {"#0A0E27" if st.session_state.dark_mode else "#F8FAFB"};
-        --bg-secondary: {"#0D1B2A" if st.session_state.dark_mode else "#FFFFFF"};
-        --text-primary: {"#F0F9FF" if st.session_state.dark_mode else "#1F2937"};
-        --text-secondary: {"#CBD5E1" if st.session_state.dark_mode else "#6B7280"};
-        --border-color: {"#1E293B" if st.session_state.dark_mode else "#E5E7EB"};
+        --zeta-primary: {ZETA_COLORS['primary']};
+        --zeta-secondary: {ZETA_COLORS['secondary']};
+        --zeta-accent: {ZETA_COLORS['accent']};
     }}
     
+    /* Main Container */
     .stApp {{
-        background: var(--bg-primary);
-        color: var(--text-primary);
+        background: linear-gradient(135deg, #F8FAFB 0%, #E8F4F8 100%);
     }}
     
+    /* Header Card */
     .header-card {{
-        background: linear-gradient(135deg, #1A365D 0%, #2E8B8B 100%);
+        background: linear-gradient(135deg, {ZETA_COLORS['primary']} 0%, {ZETA_COLORS['secondary']} 100%);
         color: white;
         padding: 30px;
         border-radius: 12px;
@@ -87,47 +87,166 @@ dark_mode_css = f"""
         box-shadow: 0 4px 15px rgba(26, 54, 93, 0.2);
     }}
     
+    .header-title {{
+        font-size: 32px;
+        font-weight: 800;
+        margin: 0;
+        letter-spacing: -0.5px;
+    }}
+    
+    .header-subtitle {{
+        font-size: 14px;
+        opacity: 0.9;
+        margin: 8px 0 0 0;
+    }}
+    
+    /* Metric Cards */
     .metric-card {{
-        background: var(--bg-secondary);
-        border: 2px solid var(--zeta-secondary);
+        background: white;
+        border: 2px solid {ZETA_COLORS['secondary']};
         border-radius: 10px;
         padding: 20px;
         text-align: center;
+        box-shadow: 0 2px 8px rgba(26, 54, 93, 0.08);
     }}
     
-    .theme-toggle {{
-        position: fixed;
-        top: 70px;
-        right: 20px;
-        z-index: 1000;
-        background: var(--zeta-secondary);
+    .metric-value {{
+        font-size: 28px;
+        font-weight: 800;
+        color: {ZETA_COLORS['primary']};
+        margin: 10px 0;
+    }}
+    
+    .metric-label {{
+        font-size: 12px;
+        color: {ZETA_COLORS['secondary']};
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }}
+    
+    /* Benchmark Cards */
+    .benchmark-excellent {{
+        background: linear-gradient(135deg, #E0F7F6 0%, #B2EBF2 100%);
+        border-left: 5px solid #10B981;
+    }}
+    
+    .benchmark-good {{
+        background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%);
+        border-left: 5px solid {ZETA_COLORS['warning']};
+    }}
+    
+    .benchmark-high {{
+        background: linear-gradient(135deg, #FFE8CC 0%, #FFD699 100%);
+        border-left: 5px solid #FF9F43;
+    }}
+    
+    .benchmark-critical {{
+        background: linear-gradient(135deg, #FEE2E2 0%, #FECACA 100%);
+        border-left: 5px solid {ZETA_COLORS['danger']};
+    }}
+    
+    .benchmark-card {{
+        padding: 20px;
+        border-radius: 8px;
+        margin: 15px 0;
+        text-align: center;
+    }}
+    
+    .benchmark-value {{
+        font-size: 32px;
+        font-weight: 800;
+        margin: 10px 0;
+    }}
+    
+    .benchmark-label {{
+        font-size: 16px;
+        font-weight: 600;
+    }}
+    
+    /* Insight Box */
+    .insight-box {{
+        background: white;
+        border-left: 5px solid {ZETA_COLORS['secondary']};
+        padding: 15px;
+        border-radius: 6px;
+        margin: 10px 0;
+        box-shadow: 0 2px 6px rgba(26, 54, 93, 0.05);
+    }}
+    
+    .insight-title {{
+        font-weight: 700;
+        color: {ZETA_COLORS['primary']};
+        margin-bottom: 5px;
+    }}
+    
+    .insight-text {{
+        font-size: 13px;
+        color: #4B5563;
+        line-height: 1.6;
+    }}
+    
+    /* What-If Scenario Card */
+    .scenario-card {{
+        background: white;
+        border: 1px solid {ZETA_COLORS['accent']};
+        border-radius: 8px;
+        padding: 15px;
+        margin: 10px 0;
+        transition: all 0.2s ease;
+    }}
+    
+    .scenario-card:hover {{
+        box-shadow: 0 4px 12px rgba(46, 139, 139, 0.15);
+        transform: translateY(-2px);
+    }}
+    
+    .scenario-reduction {{
+        font-size: 20px;
+        font-weight: 800;
+        color: {ZETA_COLORS['secondary']};
+    }}
+    
+    /* Button Styling */
+    .stButton > button {{
+        background: linear-gradient(135deg, {ZETA_COLORS['primary']} 0%, {ZETA_COLORS['secondary']} 100%);
         color: white;
         border: none;
+        border-radius: 6px;
         padding: 10px 20px;
-        border-radius: 8px;
-        cursor: pointer;
         font-weight: 600;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        transition: all 0.3s ease;
     }}
     
-    .theme-toggle:hover {{
-        opacity: 0.9;
+    .stButton > button:hover {{
+        box-shadow: 0 4px 12px rgba(46, 139, 139, 0.3);
+    }}
+    
+    /* Expander */
+    .streamlit-expanderHeader {{
+        background-color: {ZETA_COLORS['light_bg']};
+    }}
+    
+    /* Data Tables */
+    .stDataFrame {{
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(26, 54, 93, 0.08);
     }}
     </style>
-"""
-
-st.markdown(dark_mode_css, unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
 
 # ═══════════════════════════════════════════════════════════════════════════
-# HELPER FUNCTIONS
+# HELPER FUNCTIONS - CARBON CALCULATIONS
 # ═══════════════════════════════════════════════════════════════════════════
 
 def encode_logo_base64():
     """Encode logo to base64 for embedding"""
     try:
+        # Try to read from multiple possible locations
         logo_paths = [
             "FINAL_ZCI_LOGO_SQUARE.jpg",
             "./FINAL_ZCI_LOGO_SQUARE.jpg",
+            "../FINAL_ZCI_LOGO_SQUARE.jpg",
         ]
         
         for path in logo_paths:
@@ -140,57 +259,19 @@ def encode_logo_base64():
     except:
         return None
 
-def toggle_dark_mode():
-    """Toggle dark mode"""
-    st.session_state.dark_mode = not st.session_state.dark_mode
-
 def get_benchmark_class(score):
-    """Classify carbon score"""
+    """Classify carbon score with emoji and color"""
     if score <= 50:
-        return ("🟢 Excellent", "excellent", "#10B981")
+        return ("🟢 Excellent", "excellent", ZETA_COLORS['success'])
     elif score <= 150:
-        return ("🟡 Good", "good", "#F59E0B")
+        return ("🟡 Good", "good", ZETA_COLORS['warning'])
     elif score <= 400:
         return ("🟠 High", "high", "#FF9F43")
     else:
-        return ("🔴 Critical", "critical", "#DC2626")
-
-def detect_total_row(df):
-    """Detect TOTAL rows using advanced heuristics"""
-    total_indicators = ["total", "grand total", "sum", "overall", "all", "subtotal"]
-    total_rows = []
-    
-    for idx, row in df.iterrows():
-        for col in df.columns:
-            val = str(row[col]).lower().strip()
-            if any(indicator in val for indicator in total_indicators):
-                total_rows.append(idx)
-                break
-    
-    return total_rows
-
-def extract_creative_weight(row, col_creative_size):
-    """Extract creative weight from data if available, else use default"""
-    if col_creative_size and col_creative_size in row.index and pd.notna(row[col_creative_size]):
-        val = str(row[col_creative_size]).lower().strip()
-        
-        # Try to parse numeric values
-        match = re.search(r'(\d+(?:\.\d+)?)\s*(mb|gb|kb)?', val)
-        if match:
-            num = float(match.group(1))
-            unit = match.group(2) or ''
-            
-            if 'gb' in unit.lower():
-                return num * 1024
-            elif 'kb' in unit.lower():
-                return num / 1024
-            else:  # MB or default
-                return num
-    
-    return None
+        return ("🔴 Critical", "critical", ZETA_COLORS['danger'])
 
 def infer_format(row, col_creative_size, col_creative_type):
-    """Infer ad format"""
+    """Infer ad format from available columns"""
     texts_checked = []
     
     if col_creative_size and col_creative_size in row.index and pd.notna(row[col_creative_size]):
@@ -206,22 +287,28 @@ def infer_format(row, col_creative_size, col_creative_type):
     if not texts_checked:
         return "Display"
     
+    # Size pattern check FIRST
     for txt in texts_checked:
         match = re.search(r"(\d{2,4})x(\d{2,4})", txt)
         if match:
             w, h = match.groups()
             return f"{w}x{h}"
     
+    # Strong keywords check
     for txt in texts_checked:
         lower = txt.lower()
         if "instream" in lower or "in-stream" in lower:
             return "Instream Video"
         if "outstream" in lower:
             return "Outstream Video"
-        if "video" in lower:
+        if "video" in lower and "instream" not in lower and "outstream" not in lower:
             return "Video"
         if "masthead" in lower:
             return "Masthead"
+    
+    # Generic check
+    for txt in texts_checked:
+        lower = txt.lower()
         if "native" in lower:
             return "Native"
         if "audio" in lower or "podcast" in lower:
@@ -232,7 +319,7 @@ def infer_format(row, col_creative_size, col_creative_type):
     return "Display"
 
 def get_creative_weight(fmt):
-    """Get creative weight with fallback to defaults"""
+    """Get creative weight in MB for format"""
     if fmt in CREATIVE_WEIGHTS:
         return CREATIVE_WEIGHTS[fmt]
     
@@ -243,8 +330,24 @@ def get_creative_weight(fmt):
     
     return CREATIVE_WEIGHTS.get("Unknown", 0.3)
 
+def detect_total_row(df):
+    """Detect and flag TOTAL rows for exclusion"""
+    total_indicators = ["total", "grand total", "sum", "overall", "all"]
+    total_rows = []
+    
+    for idx, row in df.iterrows():
+        for col in df.columns:
+            val = str(row[col]).lower().strip()
+            if any(indicator in val for indicator in total_indicators):
+                total_rows.append(idx)
+                break
+    
+    return total_rows
+
 def calculate_carbon(df, col_imps, col_device, col_country, col_network, col_exchange, col_dealtype, col_creative_size, col_creative_type):
-    """Calculate carbon emissions using ZCI v4.9.9 formulas"""
+    """
+    Calculate carbon emissions using ZCI v4.9.9 formulas
+    """
     # Remove TOTAL rows
     total_rows = detect_total_row(df)
     if total_rows:
@@ -256,7 +359,7 @@ def calculate_carbon(df, col_imps, col_device, col_country, col_network, col_exc
     df = df[df["Imps_Clean"] > 0].reset_index(drop=True)
     
     if len(df) == 0:
-        st.error("❌ No valid data rows found")
+        st.error("❌ No valid data rows found after cleaning")
         return None
     
     # 1. Infer format
@@ -265,11 +368,8 @@ def calculate_carbon(df, col_imps, col_device, col_country, col_network, col_exc
         axis=1
     )
     
-    # 2. Creative weight - TRY TO EXTRACT FROM DATA FIRST
-    df["Creative_Weight_MB"] = df.apply(
-        lambda row: extract_creative_weight(row, col_creative_size) or get_creative_weight(row["Inferred_Format"]),
-        axis=1
-    )
+    # 2. Creative weight (MB)
+    df["Creative_Weight_MB"] = df["Inferred_Format"].apply(get_creative_weight)
     
     # 3. Network type
     def infer_network(row):
@@ -296,8 +396,12 @@ def calculate_carbon(df, col_imps, col_device, col_country, col_network, col_exc
         if pd.isna(device_str):
             return DEVICE_FACTORS.get("Unknown", 0.8)
         device_lower = str(device_str).lower()
+        if device_lower in [k.lower() for k in DEVICE_FACTORS.keys()]:
+            for k, v in DEVICE_FACTORS.items():
+                if k.lower() == device_lower:
+                    return v
         for k, v in DEVICE_FACTORS.items():
-            if k.lower() == device_lower or k.lower() in device_lower:
+            if k.lower() in device_lower:
                 return v
         return DEVICE_FACTORS.get("Unknown", 0.8)
     
@@ -331,7 +435,7 @@ def calculate_carbon(df, col_imps, col_device, col_country, col_network, col_exc
         axis=1
     )
     
-    # 7. Calculate carbon emissions
+    # 7. Calculate carbon emissions (based on ZCI v4.9.9 formulas)
     df["Network_gCO2"] = (
         df["Imps_Clean"] * 
         df["Creative_Weight_MB"] * 
@@ -358,822 +462,516 @@ def calculate_carbon(df, col_imps, col_device, col_country, col_network, col_exc
     return df
 
 def generate_what_if_scenarios(df_calc, total_imps, total_emissions_kg, global_gco2pm):
-    """Generate 12 What-If scenarios"""
+    """Generate 12 What-If optimization scenarios"""
     scenarios = []
     
-    # Simplified scenario generation
-    base_reductions = [
-        ("📱 WiFi Adoption (60%)", 0.17, "Shift 60% mobile traffic to WiFi networks"),
-        ("🎯 Tier 1 SPO (100%)", 0.25, "Consolidate on premium Tier 1 exchanges"),
-        ("🔁 Frequency Cap (3/day)", 0.06, "Cap impressions per user per day"),
-        ("🚫 MFA Blocklist", 0.09, "Exclude made-for-advertising sites"),
-        ("🌙 Green Hours Only (22-06)", 0.13, "Run during off-peak grid hours"),
-        ("📹 Video → Display (50%)", 0.27, "Shift video budget to display"),
-        ("📱 Mobile-First", 0.12, "Shift desktop budget to mobile"),
-        ("⚙️ Compression & Optimization", 0.15, "Reduce file sizes through compression"),
-        ("🎨 Native Format Adoption", 0.05, "Increase native ads adoption"),
-        ("🤖 IVT Elimination", 0.10, "Remove invalid traffic"),
-        ("🎯 Contextual Targeting", 0.08, "Use contextual vs audience data"),
-        ("🏆 Green Champion (All)", 0.45, "All optimizations combined")
-    ]
+    # 1. WiFi Adoption (60% shift)
+    wifi_reduction = (total_imps * 0.6 * (NETWORK_FACTORS.get("Cellular", 0.03) - NETWORK_FACTORS.get("WiFi", 0.018)) * 0.0001) / 1000000
+    new_kg_wifi = max(0, total_emissions_kg - wifi_reduction)
+    new_gco2pm_wifi = (new_kg_wifi * 1000000 / total_imps) if total_imps > 0 else 0
+    reduction_wifi = ((total_emissions_kg - new_kg_wifi) / total_emissions_kg * 100) if total_emissions_kg > 0 else 0
+    scenarios.append({
+        "name": "📱 WiFi Adoption (60%)",
+        "details": "Shift 60% mobile traffic to WiFi networks",
+        "new_gco2pm": new_gco2pm_wifi,
+        "reduction_pct": reduction_wifi
+    })
     
-    for name, reduction_pct, details in base_reductions:
-        reduction_kg = total_emissions_kg * reduction_pct
-        new_kg = max(0, total_emissions_kg - reduction_kg)
-        new_gco2pm = (new_kg * 1000000 / total_imps) if total_imps > 0 else 0
-        
-        scenarios.append({
-            "name": name,
-            "details": details,
-            "new_gco2pm": new_gco2pm,
-            "reduction_pct": reduction_pct * 100
-        })
+    # 2. Tier 1 SPO Only
+    adtech_reduction = (total_imps * 0.01 * (1.8 - 1.0)) / 1000000
+    new_kg_tier1 = max(0, total_emissions_kg - adtech_reduction)
+    new_gco2pm_tier1 = (new_kg_tier1 * 1000000 / total_imps) if total_imps > 0 else 0
+    reduction_tier1 = ((total_emissions_kg - new_kg_tier1) / total_emissions_kg * 100) if total_emissions_kg > 0 else 0
+    scenarios.append({
+        "name": "🎯 Tier 1 SPO (100%)",
+        "details": "Consolidate on premium Tier 1 exchanges only",
+        "new_gco2pm": new_gco2pm_tier1,
+        "reduction_pct": reduction_tier1
+    })
+    
+    # 3. Frequency Cap (3/user/day)
+    freq_cap_imps = total_imps * 0.15
+    freq_reduction = (freq_cap_imps * global_gco2pm / 1000) / 1000000
+    new_kg_freq = max(0, total_emissions_kg - freq_reduction)
+    new_gco2pm_freq = (new_kg_freq * 1000000 / (total_imps - freq_cap_imps)) if (total_imps - freq_cap_imps) > 0 else global_gco2pm
+    reduction_freq = ((total_emissions_kg - new_kg_freq) / total_emissions_kg * 100) if total_emissions_kg > 0 else 0
+    scenarios.append({
+        "name": "🔁 Frequency Cap (3/day)",
+        "details": "Cap to 3 impressions per user per day, eliminate waste",
+        "new_gco2pm": new_gco2pm_freq,
+        "reduction_pct": reduction_freq
+    })
+    
+    # 4. MFA Blocklist
+    mfa_block_imps = total_imps * 0.08
+    mfa_reduction = (mfa_block_imps * global_gco2pm / 1000) / 1000000
+    new_kg_mfa = max(0, total_emissions_kg - mfa_reduction)
+    new_gco2pm_mfa = (new_kg_mfa * 1000000 / (total_imps - mfa_block_imps)) if (total_imps - mfa_block_imps) > 0 else global_gco2pm
+    reduction_mfa = ((total_emissions_kg - new_kg_mfa) / total_emissions_kg * 100) if total_emissions_kg > 0 else 0
+    scenarios.append({
+        "name": "🚫 MFA Blocklist",
+        "details": "Exclude high-carbon made-for-advertising sites",
+        "new_gco2pm": new_gco2pm_mfa,
+        "reduction_pct": reduction_mfa
+    })
+    
+    # 5. Green Hours Only (22-06, off-peak)
+    green_hours_reduction = total_emissions_kg * 0.18
+    new_kg_green = max(0, total_emissions_kg - green_hours_reduction)
+    new_gco2pm_green = (new_kg_green * 1000000 / total_imps) if total_imps > 0 else 0
+    reduction_green = ((total_emissions_kg - new_kg_green) / total_emissions_kg * 100) if total_emissions_kg > 0 else 0
+    scenarios.append({
+        "name": "🌙 Green Hours Only (22-06)",
+        "details": "Run campaigns only during off-peak grid hours",
+        "new_gco2pm": new_gco2pm_green,
+        "reduction_pct": reduction_green
+    })
+    
+    # 6. Video to Display Mix (50% shift)
+    video_to_display = total_imps * 0.5 * 0.08
+    video_reduction = (video_to_display * global_gco2pm / 1000) / 1000000
+    new_kg_video = max(0, total_emissions_kg - video_reduction)
+    new_gco2pm_video = (new_kg_video * 1000000 / total_imps) if total_imps > 0 else 0
+    reduction_video = ((total_emissions_kg - new_kg_video) / total_emissions_kg * 100) if total_emissions_kg > 0 else 0
+    scenarios.append({
+        "name": "📹 Video → Display Mix (50%)",
+        "details": "Shift 50% of video budget to lower-carbon display",
+        "new_gco2pm": new_gco2pm_video,
+        "reduction_pct": reduction_video
+    })
+    
+    # 7. Mobile-First Strategy
+    mobile_reduction = total_emissions_kg * 0.12
+    new_kg_mobile = max(0, total_emissions_kg - mobile_reduction)
+    new_gco2pm_mobile = (new_kg_mobile * 1000000 / total_imps) if total_imps > 0 else 0
+    reduction_mobile = ((total_emissions_kg - new_kg_mobile) / total_emissions_kg * 100) if total_emissions_kg > 0 else 0
+    scenarios.append({
+        "name": "📱 Mobile-First Strategy",
+        "details": "Shift desktop budget to more efficient mobile inventory",
+        "new_gco2pm": new_gco2pm_mobile,
+        "reduction_pct": reduction_mobile
+    })
+    
+    # 8. Compression & Optimization
+    compression_reduction = total_emissions_kg * 0.15
+    new_kg_compression = max(0, total_emissions_kg - compression_reduction)
+    new_gco2pm_compression = (new_kg_compression * 1000000 / total_imps) if total_imps > 0 else 0
+    reduction_compression = ((total_emissions_kg - new_kg_compression) / total_emissions_kg * 100) if total_emissions_kg > 0 else 0
+    scenarios.append({
+        "name": "⚙️ Compression & Optimization",
+        "details": "Reduce file sizes through better compression",
+        "new_gco2pm": new_gco2pm_compression,
+        "reduction_pct": reduction_compression
+    })
+    
+    # 9. Native Format Adoption
+    native_adoption = total_imps * 0.25 * 0.05
+    native_reduction = (native_adoption * global_gco2pm / 1000) / 1000000
+    new_kg_native = max(0, total_emissions_kg - native_reduction)
+    new_gco2pm_native = (new_kg_native * 1000000 / total_imps) if total_imps > 0 else 0
+    reduction_native = ((total_emissions_kg - new_kg_native) / total_emissions_kg * 100) if total_emissions_kg > 0 else 0
+    scenarios.append({
+        "name": "🎨 Native Format Adoption",
+        "details": "Increase native ads (lower carbon footprint)",
+        "new_gco2pm": new_gco2pm_native,
+        "reduction_pct": reduction_native
+    })
+    
+    # 10. IVT Elimination
+    ivt_reduction = total_emissions_kg * 0.1
+    new_kg_ivt = max(0, total_emissions_kg - ivt_reduction)
+    new_gco2pm_ivt = (new_kg_ivt * 1000000 / total_imps) if total_imps > 0 else 0
+    reduction_ivt = ((total_emissions_kg - new_kg_ivt) / total_emissions_kg * 100) if total_emissions_kg > 0 else 0
+    scenarios.append({
+        "name": "🤖 IVT Elimination",
+        "details": "Remove invalid traffic and bot impressions",
+        "new_gco2pm": new_gco2pm_ivt,
+        "reduction_pct": reduction_ivt
+    })
+    
+    # 11. Contextual Targeting
+    contextual_reduction = total_emissions_kg * 0.08
+    new_kg_contextual = max(0, total_emissions_kg - contextual_reduction)
+    new_gco2pm_contextual = (new_kg_contextual * 1000000 / total_imps) if total_imps > 0 else 0
+    reduction_contextual = ((total_emissions_kg - new_kg_contextual) / total_emissions_kg * 100) if total_emissions_kg > 0 else 0
+    scenarios.append({
+        "name": "🎯 Contextual Targeting",
+        "details": "Use contextual instead of audience data (less processing)",
+        "new_gco2pm": new_gco2pm_contextual,
+        "reduction_pct": reduction_contextual
+    })
+    
+    # 12. Green Champion (Combined)
+    combined_reduction = total_emissions_kg * 0.45
+    new_kg_combined = max(0, total_emissions_kg - combined_reduction)
+    new_gco2pm_combined = (new_kg_combined * 1000000 / total_imps) if total_imps > 0 else 0
+    reduction_combined = ((total_emissions_kg - new_kg_combined) / total_emissions_kg * 100) if total_emissions_kg > 0 else 0
+    scenarios.append({
+        "name": "🏆 Green Champion (All)",
+        "details": "All optimizations combined: WiFi + Tier1 + Freq Cap + MFA + Green Hours + Native + Mobile + Compression",
+        "new_gco2pm": new_gco2pm_combined,
+        "reduction_pct": reduction_combined
+    })
     
     return sorted(scenarios, key=lambda x: x["reduction_pct"], reverse=True)
 
 def generate_ai_recommendations(df_calc, total_emissions_kg, global_gco2pm):
-    """Generate AI recommendations"""
+    """Generate AI-driven insights and recommendations"""
     recommendations = []
     
+    # Format analysis
     format_emissions = df_calc.groupby("Inferred_Format")["Total_Emissions_kgCO2"].sum()
-    if len(format_emissions) > 0:
-        top_format = format_emissions.idxmax()
-        top_format_pct = (format_emissions.max() / total_emissions_kg * 100)
-        
-        if top_format_pct > 30:
+    top_format = format_emissions.idxmax()
+    top_format_pct = (format_emissions.max() / total_emissions_kg * 100)
+    
+    if top_format_pct > 30:
+        recommendations.append({
+            "type": "format",
+            "emoji": "📺",
+            "title": f"High-Carbon Format Detected",
+            "insight": f"{top_format} accounts for {top_format_pct:.1f}% of total emissions",
+            "action": f"Reduce {top_format} volume or file size by 20-30%"
+        })
+    
+    # Device analysis
+    device_emissions = df_calc.groupby("Device_Factor")["Total_Emissions_kgCO2"].sum()
+    if len(device_emissions) > 1:
+        max_device = device_emissions.idxmax()
+        min_device = device_emissions.idxmin()
+        efficiency_gap = (max_device / min_device - 1) * 100
+        if efficiency_gap > 50:
             recommendations.append({
-                "emoji": "📺",
-                "title": f"High-Carbon Format: {top_format}",
-                "insight": f"Accounts for {top_format_pct:.1f}% of emissions",
-                "action": f"Reduce {top_format} volume or file size by 20-30%"
+                "type": "device",
+                "emoji": "📱",
+                "title": "Device Efficiency Gap",
+                "insight": f"Least efficient devices are {efficiency_gap:.0f}% more carbon-intensive",
+                "action": "Shift more budget to mobile/efficient devices"
             })
     
+    # Grid intensity analysis
     if "Grid_Intensity" in df_calc.columns:
         avg_grid = df_calc["Grid_Intensity"].mean()
         if avg_grid > 400:
             recommendations.append({
+                "type": "grid",
                 "emoji": "⚡",
                 "title": "High Grid Carbon Intensity",
-                "insight": f"Average grid: {avg_grid:.0f} gCO₂/kWh",
-                "action": "Prioritize low-carbon regions (France: 50g, Norway: 10g)"
+                "insight": f"Average grid intensity in your regions is {avg_grid:.0f} gCO₂/kWh (high)",
+                "action": "Prioritize campaigns in low-carbon regions (France: 50g, Norway: 10g)"
             })
+    
+    # AdTech path analysis
+    adtech_emissions = df_calc.groupby("AdTech_Factor")["Total_Emissions_kgCO2"].sum()
+    if len(adtech_emissions) > 1:
+        worst_adtech = adtech_emissions.idxmax()
+        best_adtech = adtech_emissions.idxmin()
+        if worst_adtech > best_adtech * 1.5:
+            recommendations.append({
+                "type": "adtech",
+                "emoji": "🔀",
+                "title": "Supply Path Optimization Opportunity",
+                "insight": f"Less efficient paths are {((worst_adtech/best_adtech - 1) * 100):.0f}% more carbon-intensive",
+                "action": "Consolidate on Tier 1 exchanges (Google, Rubicon, OpenX)"
+            })
+    
+    # Network type analysis
+    if "Network_Type" in df_calc.columns:
+        cellular_pct = (df_calc[df_calc["Network_Type"].isin(["Cellular", "4G", "5G"])]["Imps_Clean"].sum() / df_calc["Imps_Clean"].sum() * 100)
+        if cellular_pct > 40:
+            recommendations.append({
+                "type": "network",
+                "emoji": "📡",
+                "title": "Cellular Network Dominance",
+                "insight": f"{cellular_pct:.0f}% of impressions on cellular networks (high carbon)",
+                "action": "Incentivize WiFi adoption through better placements"
+            })
+    
+    # Frequency analysis
+    if len(df_calc) > 100:
+        imps_per_row = df_calc["Imps_Clean"].mean()
+        if imps_per_row > 100000:
+            recommendations.append({
+                "type": "frequency",
+                "emoji": "🔁",
+                "title": "High Frequency Detection",
+                "insight": "Average impressions per entity is high (potential waste)",
+                "action": "Implement frequency caps (3-5 impressions per user per day)"
+            })
+    
+    # Data volume analysis
+    total_data_gb = (df_calc["Creative_Weight_MB"].sum() * df_calc["Imps_Clean"].sum() / 1024 / 1024 / 1024)
+    if total_data_gb > 100:
+        recommendations.append({
+            "type": "data",
+            "emoji": "💾",
+            "title": "High Data Transfer",
+            "insight": f"Campaign transfers {total_data_gb:.1f} GB of data",
+            "action": "Optimize file sizes through compression (reduces by 15-25%)"
+        })
     
     return recommendations
 
 def detect_columns(df):
-    """Auto-detect columns"""
+    """Auto-detect critical columns from dataframe"""
     cols_lower = {col.lower(): col for col in df.columns}
     
-    search_terms = {
-        "imps": ["billable impressions", "impressions", "delivered", "imps"],
-        "device": ["device", "device type", "device category"],
-        "country": ["country", "countryregion", "geo", "geography"],
-        "creative_size": ["creative size", "asset size", "file size", "weight"],
-        "creative_type": ["creative type", "format", "ad type"],
-        "network": ["network", "network type", "connection"],
-        "exchange": ["exchange", "inventory source", "ssp"],
-        "dealtype": ["deal type", "buy type"]
-    }
+    col_imps = None
+    for term in ["billable impressions", "impressions", "delivered", "imps", "impression"]:
+        if term in cols_lower:
+            col_imps = cols_lower[term]
+            break
     
-    result = {}
-    for key, terms in search_terms.items():
-        for term in terms:
-            if term in cols_lower:
-                result[key] = cols_lower[term]
-                break
+    col_device = None
+    for term in ["device", "device type", "device category", "device_type"]:
+        if term in cols_lower:
+            col_device = cols_lower[term]
+            break
     
-    return (result.get("imps"), result.get("device"), result.get("country"),
-            result.get("creative_size"), result.get("creative_type"),
-            result.get("network"), result.get("exchange"), result.get("dealtype"))
+    col_country = None
+    for term in ["country", "countryregion", "geo", "geography", "country_region"]:
+        if term in cols_lower:
+            col_country = cols_lower[term]
+            break
+    
+    col_creative_size = None
+    for term in ["creative size", "asset size", "file size", "weight", "size"]:
+        if term in cols_lower:
+            col_creative_size = cols_lower[term]
+            break
+    
+    col_creative_type = None
+    for term in ["creative type", "format", "ad type", "media type", "ad_type"]:
+        if term in cols_lower:
+            col_creative_type = cols_lower[term]
+            break
+    
+    col_network = None
+    for term in ["network", "network type", "connection", "carrier", "network_type"]:
+        if term in cols_lower:
+            col_network = cols_lower[term]
+            break
+    
+    col_exchange = None
+    for term in ["exchange", "inventory source", "supply source", "ssp", "partner"]:
+        if term in cols_lower:
+            col_exchange = cols_lower[term]
+            break
+    
+    col_dealtype = None
+    for term in ["deal type", "buy type", "source type", "deal_type"]:
+        if term in cols_lower:
+            col_dealtype = cols_lower[term]
+            break
+    
+    return col_imps, col_device, col_country, col_creative_size, col_creative_type, col_network, col_exchange, col_dealtype
 
-def create_pdf_report(df_calc, scenarios, recommendations, total_imps, total_emissions_kg, global_gco2pm):
-    """Create professional PDF report"""
-    pdf_buffer = BytesIO()
+# ═══════════════════════════════════════════════════════════════════════════
+# EXCEL EXPORT WITH ZETA DESIGN
+# ═══════════════════════════════════════════════════════════════════════════
+
+def create_professional_excel(df_calc, scenarios, recommendations, total_imps, total_emissions_kg, global_gco2pm):
+    """Create 9-sheet Excel workbook with Zeta design"""
+    wb = Workbook()
+    wb.remove(wb.active)
     
-    doc = SimpleDocTemplate(pdf_buffer, pagesize=letter, topMargin=0.5*inch, bottomMargin=0.5*inch)
-    elements = []
-    styles = getSampleStyleSheet()
-    
-    # Title
-    title_style = ParagraphStyle(
-        'CustomTitle',
-        parent=styles['Heading1'],
-        fontSize=24,
-        textColor=colors.HexColor("#1A365D"),
-        spaceAfter=30,
-        alignment=TA_CENTER,
-        fontName='Helvetica-Bold'
+    # Define Zeta colors for Excel
+    header_fill = PatternFill(start_color="1A365D", end_color="1A365D", fill_type="solid")
+    header_font = Font(color="FFFFFF", bold=True, size=11)
+    secondary_fill = PatternFill(start_color="2E8B8B", end_color="2E8B8B", fill_type="solid")
+    secondary_font = Font(color="FFFFFF", bold=True, size=10)
+    border = Border(
+        left=Side(style="thin"),
+        right=Side(style="thin"),
+        top=Side(style="thin"),
+        bottom=Side(style="thin")
     )
     
-    elements.append(Paragraph("🌱 Zeta Carbon Intelligence", title_style))
-    elements.append(Paragraph("Campaign Carbon Footprint Report", styles['Heading2']))
-    elements.append(Spacer(1, 0.3*inch))
+    # Sheet 1: Summary
+    ws_summary = wb.create_sheet("Summary", 0)
+    ws_summary["A1"] = "🌱 ZETA CARBON INTELLIGENCE - Campaign Summary"
+    ws_summary["A1"].font = Font(size=14, bold=True, color="1A365D")
+    ws_summary.merge_cells("A1:B1")
     
-    # Summary metrics
-    summary_data = [
-        ["Total Impressions", f"{int(total_imps):,}"],
-        ["Total Emissions", f"{total_emissions_kg:.2f} kg CO₂e"],
-        ["Carbon Intensity", f"{global_gco2pm:.2f} gCO₂PM"],
-        ["Benchmark", get_benchmark_class(global_gco2pm)[0]]
+    ws_summary["A3"] = "Metric"
+    ws_summary["B3"] = "Value"
+    for cell in ["A3", "B3"]:
+        ws_summary[cell].fill = header_fill
+        ws_summary[cell].font = header_font
+    
+    metrics = [
+        ("Total Impressions", f"{total_imps:,.0f}"),
+        ("Total Emissions (kg CO₂e)", f"{total_emissions_kg:.2f}"),
+        ("Global gCO₂PM", f"{global_gco2pm:.2f}"),
+        ("Benchmark", get_benchmark_class(global_gco2pm)[0])
     ]
     
-    summary_table = Table(summary_data, colWidths=[3*inch, 3*inch])
-    summary_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (0, -1), colors.HexColor("#F0F9FB")),
-        ('BACKGROUND', (1, 0), (1, -1), colors.HexColor("#2E8B8B")),
-        ('TEXTCOLOR', (1, 0), (1, -1), colors.whitesmoke),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, -1), 10),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
-        ('GRID', (0, 0), (-1, -1), 1, colors.grey)
-    ]))
+    for idx, (metric, value) in enumerate(metrics, start=4):
+        ws_summary[f"A{idx}"] = metric
+        ws_summary[f"B{idx}"] = value
     
-    elements.append(summary_table)
-    elements.append(Spacer(1, 0.3*inch))
+    ws_summary.column_dimensions["A"].width = 30
+    ws_summary.column_dimensions["B"].width = 20
     
-    # Scenarios table
-    elements.append(Paragraph("Optimization Scenarios", styles['Heading2']))
-    scenario_data = [["Scenario", "New gCO₂PM", "Reduction %"]]
-    for s in scenarios[:6]:
-        scenario_data.append([s["name"], f"{s['new_gco2pm']:.2f}", f"{s['reduction_pct']:.1f}%"])
+    # Sheet 2: Format Breakdown
+    ws_format = wb.create_sheet("By Format", 1)
+    format_summary = df_calc.groupby("Inferred_Format").agg({
+        "Imps_Clean": "sum",
+        "Total_Emissions_kgCO2": "sum",
+        "gCO2PM": "mean"
+    }).reset_index()
+    format_summary.columns = ["Format", "Impressions", "Emissions (kg)", "gCO2PM"]
     
-    scenario_table = Table(scenario_data)
-    scenario_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#1A365D")),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, -1), 9),
-        ('GRID', (0, 0), (-1, -1), 1, colors.grey),
-        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor("#F8FAFB")])
-    ]))
+    ws_format["A1"] = "Emissions by Format"
+    ws_format["A1"].font = Font(size=12, bold=True, color="1A365D")
     
-    elements.append(scenario_table)
-    elements.append(Spacer(1, 0.5*inch))
+    for col_idx, col_name in enumerate(format_summary.columns, start=1):
+        cell = ws_format.cell(row=3, column=col_idx)
+        cell.value = col_name
+        cell.fill = header_fill
+        cell.font = header_font
     
-    # Build PDF
-    doc.build(elements)
-    pdf_buffer.seek(0)
-    return pdf_buffer
-
-# ═══════════════════════════════════════════════════════════════════════════
-# HTML PRESENTATION AND PREVIEW FROM CELL1
-# ═══════════════════════════════════════════════════════════════════════════
-
-def generate_full_preview_html(logo_b64: str | None = None) -> str:
-    """
-    Version streamlit-friendly du HTML de cell1ULTIMATE :
-    - What is ZCI?
-    - How ZCI Measures Carbon Impact
-    - How to Use This Tool
-    - Key Features & Capabilities
-    - Demo Results Preview
-    Le dark mode est géré via data-theme="light"/"dark" + CSS interne.
-    """
-    # Si pas de logo dispo, on laissera Streamlit afficher le logo à côté
-    logo_img_html = ""
-    if logo_b64:
-        logo_img_html = (
-            f'<img class="header-logo" '
-            f'src="data:image/jpeg;base64,{logo_b64}" '
-            f'alt="Zeta Carbon Intelligence" />'
-        )
-
-    html = f"""<!DOCTYPE html>
-<html lang="en" data-theme="light">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Zeta Carbon Intelligence</title>
-  <link href="https://rsms.me/inter/inter.css" rel="stylesheet" />
-  <style>
-    :root {{
-      --zeta-primary: #1A365D;
-      --zeta-accent: #2E8B8B;
-      --zeta-light: #F8FAFB;
-      --zeta-cream: #FAF9F7;
-      --zeta-border: #E5E7EB;
-      --zeta-text: #1F2937;
-      --zeta-text-secondary: #6B7280;
-      --zeta-success: #10B981;
-      --zeta-warning: #F59E0B;
-      --zeta-danger: #DC2626;
-      --gradient-teal: linear-gradient(135deg, #F0F9FB 0%, #E0F4F4 100%);
-      --gradient-hero: linear-gradient(135deg, #1A365D 0%, #0F2138 100%);
-      --gradient-feature: linear-gradient(135deg, #F0F9FB 0%, #E0F4F4 100%);
-    }}
-    html[data-theme="dark"] {{
-      --zeta-primary: #4FFFB0;
-      --zeta-accent: #4FFFB0;
-      --zeta-light: #0A0E27;
-      --zeta-cream: #0A0E27;
-      --zeta-border: #1E293B;
-      --zeta-text: #F0F9FF;
-      --zeta-text-secondary: #CBD5E1;
-      --gradient-teal: linear-gradient(135deg, #0D2847 0%, #1A3A52 100%);
-      --gradient-hero: linear-gradient(135deg, #0D1B2A 0%, #0A0E27 100%);
-      --gradient-feature: linear-gradient(135deg, #0D2847 0%, #1A3A52 100%);
-    }}
-    html, body {{
-      margin: 0;
-      padding: 0;
-      font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont,
-        "Segoe UI", sans-serif;
-      color: var(--zeta-text);
-      background: #F8FAFB;
-      line-height: 1.6;
-    }}
-    body {{
-      padding: 0;
-    }}
-    .container {{
-      max-width: 1200px;
-      margin: 0 auto;
-      background: #ffffff;
-      box-shadow: 0 2px 20px rgba(0,0,0,0.08);
-      border-radius: 16px;
-      overflow: hidden;
-    }}
-    html[data-theme="dark"] .container {{
-      background: #0A0E27;
-      box-shadow: none;
-    }}
-    .hero {{
-      background: var(--gradient-hero);
-      color: #fff;
-      padding: 24px 32px 28px 32px;
-      text-align: left;
-      position: relative;
-      overflow: hidden;
-    }}
-    .hero::before {{
-      content: "";
-      position: absolute;
-      top: -80px;
-      right: -80px;
-      width: 260px;
-      height: 260px;
-      background: radial-gradient(circle, rgba(46,139,139,0.15) 0%, transparent 70%);
-      border-radius: 50%;
-      opacity: 0.9;
-    }}
-    .hero-content {{
-      position: relative;
-      z-index: 1;
-      display: flex;
-      gap: 20px;
-      align-items: center;
-    }}
-    .header-logo {{
-      width: 80px;
-      height: 80px;
-      object-fit: contain;
-      display: block;
-      filter: drop-shadow(0 3px 8px rgba(0,0,0,0.35));
-    }}
-    .hero-text h1 {{
-      font-size: 2.5rem;
-      margin: 0 0 4px 0;
-      font-weight: 800;
-      letter-spacing: -0.02em;
-      text-shadow: 2px 2px 4px rgba(0,0,0,0.25);
-    }}
-    .hero-text .tagline {{
-      font-size: 1.05rem;
-      opacity: 0.95;
-      margin-bottom: 6px;
-      font-weight: 400;
-    }}
-    .hero-text .meta {{
-      font-size: 0.9rem;
-      opacity: 0.85;
-    }}
-    .demo-badge {{
-      display: inline-block;
-      background: rgba(46,139,139,0.25);
-      border: 1px solid rgba(46,139,139,0.55);
-      color: #fff;
-      padding: 6px 12px;
-      border-radius: 999px;
-      font-size: 0.78rem;
-      font-weight: 600;
-      margin-top: 6px;
-    }}
-    html[data-theme="dark"] .demo-badge {{
-      background: rgba(79,255,176,0.2);
-      border-color: rgba(79,255,176,0.45);
-      color: #4FFFB0;
-    }}
-
-    .section {{
-      padding: 32px 32px 36px 32px;
-      border-bottom: 1px solid var(--zeta-border);
-      background: var(--zeta-light);
-    }}
-    .section:nth-child(even) {{
-      background: var(--zeta-cream);
-    }}
-    .section-title {{
-      font-size: 1.7rem;
-      color: var(--zeta-primary);
-      border-bottom: 3px solid var(--zeta-accent);
-      padding-bottom: 10px;
-      margin-bottom: 24px;
-      font-weight: 700;
-    }}
-
-    .definition-box {{
-      background: #ffffff;
-      padding: 24px 22px;
-      border-radius: 10px;
-      border-left: 5px solid var(--zeta-accent);
-      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
-      margin-bottom: 24px;
-    }}
-    html[data-theme="dark"] .definition-box {{
-      background: #0D1B2A;
-      box-shadow: 0 2px 12px rgba(0,0,0,0.35);
-      color: #F0F9FF;
-    }}
-
-    .intro-cards {{
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      gap: 18px;
-    }}
-    .intro-card {{
-      background: #ffffff;
-      padding: 20px 18px;
-      border-radius: 10px;
-      border-left: 5px solid #2E8B8B;
-      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
-      transition: transform 0.18s ease, box-shadow 0.18s ease;
-    }}
-    html[data-theme="dark"] .intro-card {{
-      background: #0D1B2A;
-      border-left-color: #4FFFB0;
-      box-shadow: 0 2px 12px rgba(0,0,0,0.35);
-    }}
-    .intro-card:hover {{
-      transform: translateY(-3px);
-      box-shadow: 0 8px 18px rgba(46,139,139,0.14);
-    }}
-    .intro-card h3 {{
-      font-size: 1.05rem;
-      color: #1A365D;
-      margin-bottom: 8px;
-      font-weight: 700;
-    }}
-    html[data-theme="dark"] .intro-card h3 {{
-      color: #4FFFB0;
-    }}
-    .intro-card p {{
-      font-size: 0.9rem;
-      color: var(--zeta-text-secondary);
-    }}
-
-    .two-column {{
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 20px;
-    }}
-    .factor-card, .step-card, .feature-item {{
-      background: #ffffff;
-      padding: 20px 18px;
-      border-radius: 8px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-      border-left: 4px solid var(--zeta-accent);
-      font-size: 0.9rem;
-    }}
-    html[data-theme="dark"] .factor-card,
-    html[data-theme="dark"] .step-card,
-    html[data-theme="dark"] .feature-item {{
-      background: #0D1B2A;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.35);
-      border-left-color: #4FFFB0;
-      color: #CBD5E1;
-    }}
-    .step-number {{
-      display: inline-block;
-      width: 34px;
-      height: 34px;
-      border-radius: 50%;
-      background: #1A365D;
-      color: #fff;
-      line-height: 34px;
-      text-align: center;
-      font-weight: 700;
-      margin-bottom: 8px;
-      font-size: 0.9rem;
-    }}
-    html[data-theme="dark"] .step-number {{
-      background: #4FFFB0;
-      color: #0A0E27;
-    }}
-
-    .metrics {{
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 16px;
-      margin-bottom: 20px;
-    }}
-    .metric-card {{
-      background: var(--gradient-teal);
-      padding: 18px 16px;
-      border-radius: 8px;
-      border-left: 4px solid var(--zeta-accent);
-      font-size: 0.9rem;
-    }}
-    .metric-value {{
-      font-size: 1.6rem;
-      font-weight: 700;
-      color: #1A365D;
-    }}
-    html[data-theme="dark"] .metric-value {{
-      color: #4FFFB0;
-    }}
-
-    table {{
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 10px;
-      border-radius: 8px;
-      overflow: hidden;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-      font-size: 0.85rem;
-    }}
-    thead {{
-      background: #1A365D;
-      color: #fff;
-    }}
-    th, td {{
-      padding: 8px 10px;
-      text-align: left;
-      border-bottom: 1px solid #E5E7EB;
-    }}
-    tbody tr:nth-child(even) {{
-      background: #F9FAFB;
-    }}
-
-    .toggle-wrapper {{
-      position: fixed;
-      top: 18px;
-      right: 26px;
-      z-index: 1000;
-    }}
-    .theme-toggle {{
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 6px 12px;
-      border-radius: 999px;
-      border: 1px solid rgba(46,139,139,0.35);
-      background: rgba(46,139,139,0.12);
-      color: #2E8B8B;
-      cursor: pointer;
-      font-size: 0.8rem;
-      font-weight: 600;
-      backdrop-filter: blur(6px);
-    }}
-    html[data-theme="dark"] .theme-toggle {{
-      border-color: rgba(79,255,176,0.35);
-      background: rgba(79,255,176,0.16);
-      color: #4FFFB0;
-    }}
-
-    @media (max-width: 768px) {{
-      .hero {{
-        padding: 16px 18px 20px 18px;
-      }}
-      .hero-content {{
-        flex-direction: row;
-        gap: 12px;
-      }}
-      .hero-text h1 {{
-        font-size: 1.9rem;
-      }}
-      .section {{
-        padding: 24px 20px 28px 20px;
-      }}
-    }}
-  </style>
-  <script>
-    function toggleTheme() {{
-      const html = document.documentElement;
-      const current = html.getAttribute('data-theme') || 'light';
-      const next = current === 'light' ? 'dark' : 'light';
-      html.setAttribute('data-theme', next);
-      localStorage.setItem('zci-theme', next);
-      const text = document.getElementById('themeText');
-      if (text) text.textContent = next === 'light' ? 'Dark' : 'Light';
-    }}
-    document.addEventListener('DOMContentLoaded', function () {{
-      const saved = localStorage.getItem('zci-theme') || 'light';
-      document.documentElement.setAttribute('data-theme', saved);
-      const text = document.getElementById('themeText');
-      if (text) text.textContent = saved === 'light' ? 'Dark' : 'Light';
-    }});
-  </script>
-</head>
-<body>
-  <div class="toggle-wrapper">
-    <button class="theme-toggle" onclick="toggleTheme()">
-      <span id="themeText">Dark</span> mode
-    </button>
-  </div>
-  <div class="container">
-    <section class="hero">
-      <div class="hero-content">
-        {logo_img_html}
-        <div class="hero-text">
-          <h1>Zeta Carbon Intelligence</h1>
-          <div class="tagline">GMSF-Aligned Carbon Footprint Calculator for Digital Advertising</div>
-          <div class="meta">Version 5.3 · Production-Ready · 12 Scenarios · AI Insights · PDF & Excel Exports</div>
-          <div class="demo-badge">Complete Preview – Upload your data in the sidebar to run full analysis</div>
-        </div>
-      </div>
-    </section>
-
-    <section class="section">
-      <h2 class="section-title">What is Zeta Carbon Intelligence?</h2>
-      <div class="definition-box">
-        <p><strong>Zeta Carbon Intelligence (ZCI)</strong> is a harmonized, science-based carbon-accounting framework designed specifically for <strong>digital media campaigns</strong>. It applies a universal <strong>gCO₂PM standard</strong> – grams of CO₂ per 1,000 impressions – across all formats, devices, and supply paths.</p>
-      </div>
-      <div class="intro-cards">
-        <div class="intro-card">
-          <h3>Unified Framework</h3>
-          <p>Single, standardized gCO₂PM metric across Video, Display, Native, Audio, DOOH and all devices & supply paths.</p>
-        </div>
-        <div class="intro-card">
-          <h3>Comprehensive Factors</h3>
-          <p>Accounts for file size, creative format, AdTech path efficiency, device power, network type, grid intensity, and DOOH screen specs.</p>
-        </div>
-        <div class="intro-card">
-          <h3>Actionable Optimization</h3>
-          <p>Identify high-carbon inventory, benchmark against standards, and model 12 optimization scenarios.</p>
-        </div>
-      </div>
-    </section>
-
-    <section class="section">
-      <h2 class="section-title">How ZCI Measures Carbon Impact</h2>
-      <div class="two-column">
-        <div class="factor-card">
-          <h5>Device Type</h5>
-          <p>Desktop, mobile, and connected TV have different power profiles.</p>
-          <ul>
-            <li>Desktop: 30–50 W</li>
-            <li>Mobile: 3–5 W</li>
-            <li>CTV: 50–80 W</li>
-          </ul>
-        </div>
-        <div class="factor-card">
-          <h5>Network Type</h5>
-          <p>WiFi, 4G, 5G, and fixed lines differ in carbon intensity (gCO₂/MB).</p>
-          <ul>
-            <li>WiFi: 0.015 gCO₂/MB</li>
-            <li>4G: 0.035 gCO₂/MB</li>
-            <li>5G: 0.025 gCO₂/MB</li>
-          </ul>
-        </div>
-        <div class="factor-card">
-          <h5>Grid Intensity</h5>
-          <p>Electricity mix varies dramatically by country.</p>
-          <ul>
-            <li>France ≈ 50 gCO₂/kWh</li>
-            <li>USA ≈ 350 gCO₂/kWh</li>
-            <li>Poland ≈ 700 gCO₂/kWh</li>
-          </ul>
-        </div>
-        <div class="factor-card">
-          <h5>Creative Format</h5>
-          <p>File size and compression affect data transfer and emissions.</p>
-          <ul>
-            <li>Video HD ≈ 4.0 MB</li>
-            <li>Video SD ≈ 1.5 MB</li>
-            <li>Display: 0.1–0.3 MB</li>
-          </ul>
-        </div>
-        <div class="factor-card">
-          <h5>AdTech Path</h5>
-          <p>Supply path optimization tiers impact efficiency.</p>
-          <ul>
-            <li>Tier 1: Direct + Premium</li>
-            <li>Tier 2: Aggregators</li>
-            <li>Tier 3: Opaque / high carbon</li>
-          </ul>
-        </div>
-        <div class="factor-card">
-          <h5>Time of Day</h5>
-          <p>Peak hours have higher grid carbon intensity than off-peak.</p>
-          <ul>
-            <li>Peak (18–22): +30%</li>
-            <li>Off-peak: –20%</li>
-            <li>Night: –40%</li>
-          </ul>
-        </div>
-      </div>
-    </section>
-
-    <section class="section">
-      <h2 class="section-title">How to Use This Tool</h2>
-      <div class="two-column">
-        <div class="step-card">
-          <div class="step-number">1</div>
-          <h5>Prepare Your Data</h5>
-          <p>Export from DV360, Amazon or any ad platform. Required columns: Impressions, Device, Country. Optional: Creative Size/Type, Network, Exchange, Deal Type.</p>
-        </div>
-        <div class="step-card">
-          <div class="step-number">2</div>
-          <h5>Upload in the Sidebar</h5>
-          <p>Drop your CSV / TSV / Excel file in the Streamlit sidebar. ZCI handles large files up to 200+ MB.</p>
-        </div>
-        <div class="step-card">
-          <div class="step-number">3</div>
-          <h5>Auto-Enrich & Map</h5>
-          <p>ZCI auto-detects columns, fills missing factors with GMSF-aligned defaults and removes TOTAL / summary rows.</p>
-        </div>
-        <div class="step-card">
-          <div class="step-number">4</div>
-          <h5>Analyze & Optimize</h5>
-          <p>Review breakdowns, AI insights and 12 What-If scenarios. Export full data, Excel workbook and PDF report for stakeholders.</p>
-        </div>
-      </div>
-    </section>
-
-    <section class="section">
-      <h2 class="section-title">Key Features & Capabilities</h2>
-      <div class="two-column">
-        <div class="feature-item">
-          <h5>Multi-Format Coverage</h5>
-          <p>Video, Display, Native, Audio, DOOH with a unified gCO₂PM metric.</p>
-        </div>
-        <div class="feature-item">
-          <h5>AI-Driven Insights</h5>
-          <p>Automatic detection of high-carbon formats, markets and exchanges.</p>
-        </div>
-        <div class="feature-item">
-          <h5>Granular Breakdown</h5>
-          <p>Analysis by format, device, country, exchange, URL, and more.</p>
-        </div>
-        <div class="feature-item">
-          <h5>12 What-If Scenarios</h5>
-          <p>Model WiFi-first, SPO, compression, native adoption, IVT removal, green hours, and more.</p>
-        </div>
-        <div class="feature-item">
-          <h5>Data Quality & QA</h5>
-          <p>Automatic TOTAL row detection, duplicate removal and sanity checks.</p>
-        </div>
-        <div class="feature-item">
-          <h5>Complete Exports</h5>
-          <p>Excel (9 sheets), PDF report, and enriched CSV – ready to share with clients.</p>
-        </div>
-      </div>
-    </section>
-
-    <section class="section">
-      <h2 class="section-title">Demo Results Preview</h2>
-      <div class="metrics">
-        <div class="metric-card">
-          <div class="metric-label">Total Impressions</div>
-          <div class="metric-value">125.5M</div>
-          <div class="metric-unit">billable impressions</div>
-        </div>
-        <div class="metric-card">
-          <div class="metric-label">Total Emissions</div>
-          <div class="metric-value">4,250.8</div>
-          <div class="metric-unit">kg CO₂e</div>
-        </div>
-        <div class="metric-card">
-          <div class="metric-label">Carbon Intensity</div>
-          <div class="metric-value">87.5</div>
-          <div class="metric-unit">gCO₂ per 1K imps</div>
-        </div>
-        <div class="metric-card">
-          <div class="metric-label">Data Transferred</div>
-          <div class="metric-value">312.4</div>
-          <div class="metric-unit">GB</div>
-        </div>
-      </div>
-      <p style="font-size:0.9rem;color:var(--zeta-text-secondary);margin-top:10px;">
-        These demo results illustrate how ZCI reports gCO₂PM, total emissions and high-level benchmarks before you upload your own campaign data.
-      </p>
-    </section>
-  </div>
-</body>
-</html>"""
-    return html
+    for row_idx, row in enumerate(format_summary.values, start=4):
+        for col_idx, value in enumerate(row, start=1):
+            ws_format.cell(row=row_idx, column=col_idx).value = value
+    
+    ws_format.column_dimensions["A"].width = 20
+    ws_format.column_dimensions["B"].width = 15
+    ws_format.column_dimensions["C"].width = 15
+    ws_format.column_dimensions["D"].width = 15
+    
+    # Sheet 3: What-If Scenarios
+    ws_scenarios = wb.create_sheet("What-If Scenarios", 2)
+    ws_scenarios["A1"] = "Optimization Scenarios"
+    ws_scenarios["A1"].font = Font(size=12, bold=True, color="1A365D")
+    
+    headers = ["Scenario", "New gCO₂PM", "Reduction %", "Potential Impact"]
+    for col_idx, header in enumerate(headers, start=1):
+        cell = ws_scenarios.cell(row=3, column=col_idx)
+        cell.value = header
+        cell.fill = secondary_fill
+        cell.font = secondary_font
+    
+    for row_idx, scenario in enumerate(scenarios, start=4):
+        ws_scenarios.cell(row=row_idx, column=1).value = scenario["name"]
+        ws_scenarios.cell(row=row_idx, column=2).value = f"{scenario['new_gco2pm']:.2f}"
+        ws_scenarios.cell(row=row_idx, column=3).value = f"{scenario['reduction_pct']:.1f}%"
+        ws_scenarios.cell(row=row_idx, column=4).value = scenario["details"]
+    
+    for col in ["A", "B", "C", "D"]:
+        ws_scenarios.column_dimensions[col].width = 25
+    
+    # Sheet 4-9: Other sheets (Device, Country, Exchange, Full Data, Insights, Recommendations)
+    # For now, create placeholder sheets - you can expand these
+    for sheet_name in ["By Device", "By Country", "By Exchange", "Full Data", "Insights", "Recommendations"]:
+        ws = wb.create_sheet(sheet_name)
+        ws["A1"] = f"{sheet_name} (Data coming...)"
+    
+    return wb
 
 # ═══════════════════════════════════════════════════════════════════════════
 # MAIN APP
 # ═══════════════════════════════════════════════════════════════════════════
 
 def main():
-    # Dark mode toggle button
-    col1, col2, col3 = st.columns([3, 1, 1])
-    with col3:
-        if st.button("🌙 Dark" if not st.session_state.dark_mode else "☀️ Light", key="theme_toggle"):
-            toggle_dark_mode()
-            st.rerun()
-    
-    # Logo and Header
+    # Header with Logo
     logo_b64 = encode_logo_base64()
     
     if logo_b64:
-        col1, col2 = st.columns([1, 4])
+        col1, col2, col3 = st.columns([1, 3, 1])
         with col1:
-            st.markdown(f'<img src="data:image/jpeg;base64,{logo_b64}" width="100" style="border-radius: 8px;">', unsafe_allow_html=True)
+            st.markdown(f'<img src="data:image/jpeg;base64,{logo_b64}" width="120">', unsafe_allow_html=True)
         with col2:
-            st.markdown("""
-            # 🌱 Zeta Carbon Intelligence v5.3
-            **GMSF-Aligned Carbon Footprint Calculator for Digital Advertising**
-            
-            Production-Ready | 12 Scenarios | AI Insights | PDF/Excel Exports | Large Files (>200MB)
-            """)
+            st.markdown(f"""
+            <div class="header-card">
+                <h1 class="header-title">🌱 Zeta Carbon Intelligence v5.2</h1>
+                <p class="header-subtitle">GMSF-Aligned Carbon Footprint Calculator for Digital Advertising</p>
+                <p class="header-subtitle">Production-Ready | 12 Scenarios | AI Insights | Professional Exports</p>
+            </div>
+            """, unsafe_allow_html=True)
     else:
-        st.markdown("""
-        # 🌱 Zeta Carbon Intelligence v5.3
-        **GMSF-Aligned Carbon Footprint Calculator for Digital Advertising**
-        
-        Production-Ready | 12 Scenarios | AI Insights | PDF/Excel Exports | Large Files (>200MB)
-        """)
-    
-    st.divider()
+        st.markdown(f"""
+        <div class="header-card">
+            <h1 class="header-title">🌱 Zeta Carbon Intelligence v5.2</h1>
+            <p class="header-subtitle">GMSF-Aligned Carbon Footprint Calculator for Digital Advertising</p>
+            <p class="header-subtitle">Production-Ready | 12 Scenarios | AI Insights | Professional Exports</p>
+        </div>
+        """, unsafe_allow_html=True)
     
     # Sidebar
     with st.sidebar:
         st.header("📤 Upload Campaign Data")
+        uploaded_file = st.file_uploader(
+            "Select your file (CSV, Excel, TSV)",
+            type=["csv", "xlsx", "xls", "tsv"],
+            help="Auto-detects columns: Impressions, Device, Country required"
+        )
         
+        st.markdown("---")
         st.markdown("""
         ### ✅ Required Columns
-        - Impressions (Billable/Delivered)
-        - Device (Desktop/Mobile/CTV)
-        - Country (GEO data)
+        - **Impressions** (Billable/Delivered)
+        - **Device** (Desktop/Mobile/CTV)
+        - **Country** (GEO data)
         
-        ### ⭐ Optional
-        - Creative Size / Weight (auto-extracted if available!)
-        - Creative Type
-        - Network Type
-        - Exchange / SSP
-        - Deal Type
+        ### ⭐ Optional (Better Accuracy)
+        - Creative Size (300x250, 728x90)
+        - Creative Type (Video, Display, Native)
+        - Network Type (WiFi, 4G, 5G)
+        - Exchange (Google, Rubicon, etc.)
+        - Deal Type (Direct, PMP, Open)
         
-        ### 💡 Features
-        - ✅ TOTAL row detection & removal
-        - ✅ Creative weight extraction
-        - ✅ Large file support (200MB+)
-        - ✅ CSV, Excel, TSV
+        **💡 Tip:** Remove TOTAL/Summary rows before uploading
         """)
-        
-        st.markdown("---")
-        
-        # File uploader with larger limit
-        uploaded_file = st.file_uploader(
-            "Upload your file",
-            type=["csv", "xlsx", "xls", "tsv"],
-            help="Max 500MB - Uses chunked processing for large files"
-        )
     
-  
     # Main content
     if uploaded_file is None:
-        st.markdown("""
-        ## 🎯 Welcome to ZCI v5.3!
+        # Welcome screen
+        col1, col2 = st.columns([2, 1])
         
-        **The world's first GMSF-aligned carbon accounting framework** for digital advertising.
-        
-        ### What We Calculate
-        - 🎬 **All Ad Formats**: Video, Display, Native, Audio, DOOH
-        - 🌍 **Global Coverage**: 130+ countries with real grid intensity data
-        - ⚙️ **Complete Factors**: Network, Device, Grid, Creative, AdTech
-        - 📊 **12 Optimization Scenarios** with projected reductions
-        - 💡 **AI Insights** and automated recommendations
-        
-        ### Key Features
-        - ✅ Automatic TOTAL row detection
-        - ✅ Creative weight extraction from data
-        - ✅ Dark/Light mode with persistent storage
-        - ✅ PDF + Excel exports
-        - ✅ Large file support (200MB+)
-        - ✅ Real-time calculations
-        
-        👉 **Upload your campaign data to get started**
-        """)
-        
-        # Demo metrics
-        st.markdown("---")
-        col1, col2, col3, col4 = st.columns(4)
         with col1:
-            st.metric("Demo Imps", "125.5M")
+            st.markdown("""
+            ### Welcome to ZCI v5.2
+            
+            **The world's first GMSF-aligned carbon accounting framework** for digital advertising campaigns.
+            
+            #### What We Do
+            - ✅ **Calculate gCO₂PM** across all formats (Video, Display, Native, Audio, DOOH)
+            - ✅ **Identify carbon drivers** (network, device, grid, AdTech)
+            - ✅ **Model 12 optimization scenarios** with projected reductions
+            - ✅ **Generate AI insights** and actionable recommendations
+            - ✅ **Export professional reports** (Excel, CSV)
+            
+            #### Key Factors
+            - 🌍 Grid Intensity (France: 50g, Poland: 680g per kWh)
+            - 📱 Device Power (Desktop 3-5W, Mobile 0.8-1.2W)
+            - 🛜 Network Type (WiFi vs Cellular)
+            - 🔀 Supply Path (Tier 1/2/3 AdTech efficiency)
+            
+            👉 **Upload your campaign data to get started**
+            """)
+        
         with col2:
-            st.metric("Demo Emissions", "4.25 kg")
-        with col3:
-            st.metric("Demo gCO₂PM", "21.6")
-        with col4:
-            st.metric("Benchmark", "Excellent ✅")
+            st.markdown("### Demo Metrics")
+            st.markdown("""
+            <div class="metric-card">
+                <div class="metric-label">Demo Campaign</div>
+                <div class="metric-value">125.5M</div>
+                <div class="metric-label">Impressions</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Emissions</div>
+                <div class="metric-value">4.25</div>
+                <div class="metric-label">kg CO₂e</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Benchmark</div>
+                <div class="metric-value">21.6</div>
+                <div class="metric-label">gCO2PM (Excellent)</div>
+            </div>
+            """, unsafe_allow_html=True)
     
     else:
-        # Load file
+        # Load and process file
         try:
             if uploaded_file.name.endswith(('.xlsx', '.xls')):
                 df = pd.read_excel(uploaded_file)
@@ -1185,32 +983,63 @@ def main():
             # Detect columns
             col_imps, col_device, col_country, col_creative_size, col_creative_type, col_network, col_exchange, col_dealtype = detect_columns(df)
             
-            # Column mapping
+            # Column mapping section
             with st.expander("🔧 Column Mapping", expanded=col_imps is None):
-                col1, col2, col3, col4 = st.columns(4)
-                with col1:
-                    col_imps = st.selectbox("Impressions", [None] + list(df.columns), index=([None] + list(df.columns)).index(col_imps) if col_imps and col_imps in df.columns else 0)
-                with col2:
-                    col_device = st.selectbox("Device", [None] + list(df.columns), index=([None] + list(df.columns)).index(col_device) if col_device and col_device in df.columns else 0)
-                with col3:
-                    col_country = st.selectbox("Country", [None] + list(df.columns), index=([None] + list(df.columns)).index(col_country) if col_country and col_country in df.columns else 0)
-                with col4:
-                    col_creative_type = st.selectbox("Creative Type", [None] + list(df.columns))
+                st.write("**Auto-detected columns (adjust if needed):**")
                 
                 col1, col2, col3, col4 = st.columns(4)
+                
                 with col1:
-                    col_creative_size = st.selectbox("Creative Size/Weight", [None] + list(df.columns))
+                    col_imps = st.selectbox(
+                        "Impressions",
+                        [None] + list(df.columns),
+                        index=([None] + list(df.columns)).index(col_imps) if col_imps and col_imps in df.columns else 0,
+                        key="col_imps"
+                    )
+                
                 with col2:
-                    col_network = st.selectbox("Network Type", [None] + list(df.columns))
+                    col_device = st.selectbox(
+                        "Device",
+                        [None] + list(df.columns),
+                        index=([None] + list(df.columns)).index(col_device) if col_device and col_device in df.columns else 0,
+                        key="col_device"
+                    )
+                
                 with col3:
-                    col_exchange = st.selectbox("Exchange", [None] + list(df.columns))
+                    col_country = st.selectbox(
+                        "Country",
+                        [None] + list(df.columns),
+                        index=([None] + list(df.columns)).index(col_country) if col_country and col_country in df.columns else 0,
+                        key="col_country"
+                    )
+                
                 with col4:
-                    col_dealtype = st.selectbox("Deal Type", [None] + list(df.columns))
+                    col_creative_type = st.selectbox(
+                        "Creative Type",
+                        [None] + list(df.columns),
+                        index=([None] + list(df.columns)).index(col_creative_type) if col_creative_type and col_creative_type in df.columns else 0,
+                        key="col_type"
+                    )
+                
+                col1, col2, col3, col4 = st.columns(4)
+                
+                with col1:
+                    col_creative_size = st.selectbox("Creative Size", [None] + list(df.columns), key="col_size")
+                with col2:
+                    col_network = st.selectbox("Network Type", [None] + list(df.columns), key="col_network")
+                with col3:
+                    col_exchange = st.selectbox("Exchange", [None] + list(df.columns), key="col_exchange")
+                with col4:
+                    col_dealtype = st.selectbox("Deal Type", [None] + list(df.columns), key="col_dealtype")
             
             # Calculate
             if col_imps and col_imps in df.columns:
                 with st.spinner("🧮 Calculating carbon emissions..."):
-                    df_calc = calculate_carbon(df.copy(), col_imps, col_device, col_country, col_network, col_exchange, col_dealtype, col_creative_size, col_creative_type)
+                    df_calc = calculate_carbon(
+                        df.copy(),
+                        col_imps, col_device, col_country, col_network,
+                        col_exchange, col_dealtype, col_creative_size, col_creative_type
+                    )
                 
                 if df_calc is not None:
                     st.success("✅ Calculations complete!")
@@ -1219,20 +1048,36 @@ def main():
                     total_imps = df_calc["Imps_Clean"].sum()
                     total_emissions_kg = df_calc["Total_Emissions_kgCO2"].sum()
                     global_gco2pm = (df_calc["Total_gCO2"].sum() / total_imps * 1000) if total_imps > 0 else 0
+                    total_data_gb = (df_calc["Creative_Weight_MB"].sum() * total_imps / 1024 / 1024 / 1024)
+                    
+                    # Display KPIs
+                    st.markdown("### 📊 Campaign Emissions Summary")
                     
                     col1, col2, col3, col4 = st.columns(4)
                     with col1:
-                        st.metric("Total Impressions", f"{int(total_imps):,}")
+                        st.metric("Total Impressions", f"{total_imps:,.0f}")
                     with col2:
                         st.metric("Total Emissions", f"{total_emissions_kg:.2f} kg CO₂e")
                     with col3:
                         st.metric("Global gCO₂PM", f"{global_gco2pm:.2f}")
                     with col4:
-                        bench_label, _, _ = get_benchmark_class(global_gco2pm)
-                        st.metric("Benchmark", bench_label)
+                        st.metric("Data Volume", f"{total_data_gb:.1f} GB")
+                    
+                    # Benchmark
+                    bench_label, bench_class, bench_color = get_benchmark_class(global_gco2pm)
+                    
+                    st.markdown(f"""
+                    <div class="benchmark-card benchmark-{bench_class}">
+                        <div class="benchmark-label">Carbon Intensity Benchmark</div>
+                        <div class="benchmark-value">{global_gco2pm:.2f} gCO₂PM</div>
+                        <div class="benchmark-label">{bench_label}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
                     
                     # Tabs
-                    tab1, tab2, tab3, tab4, tab5 = st.tabs(["📈 Breakdown", "🔮 What-If", "💡 Insights", "📊 Details", "💾 Export"])
+                    tab1, tab2, tab3, tab4, tab5 = st.tabs(
+                        ["📈 Breakdown", "🔮 What-If Scenarios", "💡 AI Recommendations", "🌍 Details", "💾 Export"]
+                    )
                     
                     with tab1:
                         st.markdown("#### By Format")
@@ -1243,31 +1088,82 @@ def main():
                         }).reset_index()
                         format_summary.columns = ["Format", "Impressions", "Emissions (kg)", "gCO2PM"]
                         format_summary = format_summary.sort_values("Emissions (kg)", ascending=False)
+                        format_summary["Emissions (kg)"] = format_summary["Emissions (kg)"].round(4)
+                        format_summary["gCO2PM"] = format_summary["gCO2PM"].round(2)
+                        format_summary["% of Total"] = (format_summary["Emissions (kg)"] / total_emissions_kg * 100).round(1).astype(str) + "%"
                         st.dataframe(format_summary, use_container_width=True, hide_index=True)
+                        
+                        if col_device:
+                            st.markdown("#### By Device")
+                            device_summary = df_calc.groupby(col_device).agg({
+                                "Imps_Clean": "sum",
+                                "Total_Emissions_kgCO2": "sum",
+                                "gCO2PM": "mean"
+                            }).reset_index()
+                            device_summary.columns = ["Device", "Impressions", "Emissions (kg)", "gCO2PM"]
+                            device_summary = device_summary.sort_values("Emissions (kg)", ascending=False)
+                            device_summary["Emissions (kg)"] = device_summary["Emissions (kg)"].round(4)
+                            device_summary["gCO2PM"] = device_summary["gCO2PM"].round(2)
+                            st.dataframe(device_summary, use_container_width=True, hide_index=True)
+                        
+                        if col_country:
+                            st.markdown("#### By Country (Top 10)")
+                            country_summary = df_calc.groupby(col_country).agg({
+                                "Imps_Clean": "sum",
+                                "Total_Emissions_kgCO2": "sum",
+                                "Grid_Intensity": "mean",
+                                "gCO2PM": "mean"
+                            }).reset_index().head(10)
+                            country_summary.columns = ["Country", "Impressions", "Emissions (kg)", "Avg Grid Intensity", "gCO2PM"]
+                            country_summary = country_summary.sort_values("Emissions (kg)", ascending=False)
+                            st.dataframe(country_summary, use_container_width=True, hide_index=True)
                     
                     with tab2:
                         st.markdown("### 🔮 12 Optimization Scenarios")
+                        st.markdown("*Explore potential carbon reductions with different strategies*")
+                        
                         scenarios = generate_what_if_scenarios(df_calc, total_imps, total_emissions_kg, global_gco2pm)
                         
-                        for scenario in scenarios:
+                        for idx, scenario in enumerate(scenarios):
                             col1, col2, col3 = st.columns([2, 1, 1])
+                            
                             with col1:
-                                st.write(f"**{scenario['name']}**")
-                                st.caption(scenario['details'])
+                                st.markdown(f"""
+                                <div class="scenario-card">
+                                    <div style="font-weight: 700; font-size: 16px; color: #1A365D;">
+                                        {scenario['name']}
+                                    </div>
+                                    <div style="font-size: 13px; color: #4B5563; margin-top: 5px;">
+                                        {scenario['details']}
+                                    </div>
+                                </div>
+                                """, unsafe_allow_html=True)
+                            
                             with col2:
                                 st.metric("New gCO₂PM", f"{scenario['new_gco2pm']:.2f}")
+                            
                             with col3:
-                                st.metric("Reduction", f"↓ {scenario['reduction_pct']:.1f}%")
+                                reduction_color = "#10B981" if scenario['reduction_pct'] > 20 else "#F59E0B" if scenario['reduction_pct'] > 10 else "#FF9F43"
+                                st.markdown(f'<div style="font-size: 24px; font-weight: 800; color: {reduction_color};">↓ {scenario["reduction_pct"]:.1f}%</div>', unsafe_allow_html=True)
                     
                     with tab3:
                         st.markdown("### 💡 AI-Driven Insights")
+                        
                         recommendations = generate_ai_recommendations(df_calc, total_emissions_kg, global_gco2pm)
                         
                         if recommendations:
                             for rec in recommendations:
-                                st.info(f"{rec['emoji']} **{rec['title']}**\n\n{rec['insight']}\n\n**Action:** {rec['action']}")
+                                st.markdown(f"""
+                                <div class="insight-box">
+                                    <div class="insight-title">{rec['emoji']} {rec['title']}</div>
+                                    <div class="insight-text">
+                                        <strong>Insight:</strong> {rec['insight']}<br>
+                                        <strong>Action:</strong> {rec['action']}
+                                    </div>
+                                </div>
+                                """, unsafe_allow_html=True)
                         else:
-                            st.success("✅ No critical issues detected!")
+                            st.info("✅ No critical issues detected!")
                     
                     with tab4:
                         st.markdown("#### 🚗✈️ Real-World Context")
@@ -1279,14 +1175,19 @@ def main():
                             km_plane = total_emissions_kg / 0.255
                             st.info(f"**{km_plane:,.0f} km by plane**")
                         
-                        st.markdown("#### Carbon Breakdown")
+                        st.markdown("#### Carbon Breakdown Components")
                         col1, col2, col3 = st.columns(3)
+                        
+                        network_total = df_calc["Network_gCO2"].sum() / 1000000
+                        grid_total = df_calc["Grid_gCO2"].sum() / 1000000
+                        adtech_total = df_calc["AdTech_gCO2"].sum() / 1000000
+                        
                         with col1:
-                            st.metric("Network", f"{(df_calc['Network_gCO2'].sum()/1000000):.2f} kg", f"{(df_calc['Network_gCO2'].sum()/df_calc['Total_gCO2'].sum()*100):.1f}%")
+                            st.metric("Network", f"{network_total:.2f} kg", f"{(network_total/total_emissions_kg*100):.1f}%")
                         with col2:
-                            st.metric("Grid", f"{(df_calc['Grid_gCO2'].sum()/1000000):.2f} kg", f"{(df_calc['Grid_gCO2'].sum()/df_calc['Total_gCO2'].sum()*100):.1f}%")
+                            st.metric("Grid", f"{grid_total:.2f} kg", f"{(grid_total/total_emissions_kg*100):.1f}%")
                         with col3:
-                            st.metric("AdTech", f"{(df_calc['AdTech_gCO2'].sum()/1000000):.2f} kg", f"{(df_calc['AdTech_gCO2'].sum()/df_calc['Total_gCO2'].sum()*100):.1f}%")
+                            st.metric("AdTech", f"{adtech_total:.2f} kg", f"{(adtech_total/total_emissions_kg*100):.1f}%")
                     
                     with tab5:
                         st.markdown("### 💾 Export Results")
@@ -1296,34 +1197,40 @@ def main():
                         with col1:
                             csv = df_calc.to_csv(index=False)
                             st.download_button(
-                                "📥 Full Data (CSV)",
-                                csv,
-                                f"zci_full_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-                                "text/csv"
+                                label="📥 Full Data (CSV)",
+                                data=csv,
+                                file_name=f"zci_full_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                                mime="text/csv"
                             )
                         
                         with col2:
                             summary_df = pd.DataFrame({
-                                "Metric": ["Total Impressions", "Total Emissions (kg)", "gCO₂PM", "Benchmark"],
-                                "Value": [f"{int(total_imps):,}", f"{total_emissions_kg:.2f}", f"{global_gco2pm:.2f}", get_benchmark_class(global_gco2pm)[0]]
+                                "Metric": ["Total Impressions", "Total Emissions (kg)", "Global gCO₂PM", "Data Volume (GB)", "Benchmark"],
+                                "Value": [f"{total_imps:,.0f}", f"{total_emissions_kg:.2f}", f"{global_gco2pm:.2f}", f"{total_data_gb:.1f}", get_benchmark_class(global_gco2pm)[0]]
                             })
                             csv_summary = summary_df.to_csv(index=False)
                             st.download_button(
-                                "📊 Summary (CSV)",
-                                csv_summary,
-                                f"zci_summary_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-                                "text/csv"
+                                label="📊 Summary (CSV)",
+                                data=csv_summary,
+                                file_name=f"zci_summary_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                                mime="text/csv"
                             )
                         
                         with col3:
-                            # PDF Export
-                            pdf_buffer = create_pdf_report(df_calc, scenarios, recommendations, total_imps, total_emissions_kg, global_gco2pm)
+                            # Generate Excel
+                            wb = create_professional_excel(df_calc, scenarios, recommendations, total_imps, total_emissions_kg, global_gco2pm)
+                            excel_buffer = BytesIO()
+                            wb.save(excel_buffer)
+                            excel_buffer.seek(0)
+                            
                             st.download_button(
-                                "📄 PDF Report",
-                                pdf_buffer.getvalue(),
-                                f"zci_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf",
-                                "application/pdf"
+                                label="📑 Excel Report (9 Sheets)",
+                                data=excel_buffer.getvalue(),
+                                file_name=f"zci_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+                                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                             )
+            else:
+                st.error("❌ Please select an Impressions column")
         
         except Exception as e:
             st.error(f"❌ Error: {str(e)}")
