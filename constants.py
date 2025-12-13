@@ -6,6 +6,8 @@ All GMSF-aligned carbon factors, grid data, and conversion coefficients
 """
 
 import pandas as pd
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+
 
 # ═══════════════════════════════════════════════════════════════════════════
 # CREATIVE WEIGHTS (MB) - OPTIMIZED v5.3
