@@ -14,6 +14,7 @@ ZETA CARBON INTELLIGENCE v5.3 - STREAMLIT PRODUCTION APP ULTIMATE
 """
 
 import streamlit as st
+import streamlit.components.v1 as components
 import pandas as pd
 import numpy as np
 import re
@@ -517,6 +518,554 @@ def create_pdf_report(df_calc, scenarios, recommendations, total_imps, total_emi
     return pdf_buffer
 
 # ═══════════════════════════════════════════════════════════════════════════
+# HTML PRESENTATION AND PREVIEW FROM CELL1
+# ═══════════════════════════════════════════════════════════════════════════
+
+def generate_full_preview_html(logo_b64: str | None = None) -> str:
+    """
+    Version streamlit-friendly du HTML de cell1ULTIMATE :
+    - What is ZCI?
+    - How ZCI Measures Carbon Impact
+    - How to Use This Tool
+    - Key Features & Capabilities
+    - Demo Results Preview
+    Le dark mode est géré via data-theme="light"/"dark" + CSS interne.
+    """
+    # Si pas de logo dispo, on laissera Streamlit afficher le logo à côté
+    logo_img_html = ""
+    if logo_b64:
+        logo_img_html = (
+            f'<img class="header-logo" '
+            f'src="data:image/jpeg;base64,{logo_b64}" '
+            f'alt="Zeta Carbon Intelligence" />'
+        )
+
+    html = f"""<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Zeta Carbon Intelligence</title>
+  <link href="https://rsms.me/inter/inter.css" rel="stylesheet" />
+  <style>
+    :root {{
+      --zeta-primary: #1A365D;
+      --zeta-accent: #2E8B8B;
+      --zeta-light: #F8FAFB;
+      --zeta-cream: #FAF9F7;
+      --zeta-border: #E5E7EB;
+      --zeta-text: #1F2937;
+      --zeta-text-secondary: #6B7280;
+      --zeta-success: #10B981;
+      --zeta-warning: #F59E0B;
+      --zeta-danger: #DC2626;
+      --gradient-teal: linear-gradient(135deg, #F0F9FB 0%, #E0F4F4 100%);
+      --gradient-hero: linear-gradient(135deg, #1A365D 0%, #0F2138 100%);
+      --gradient-feature: linear-gradient(135deg, #F0F9FB 0%, #E0F4F4 100%);
+    }}
+    html[data-theme="dark"] {{
+      --zeta-primary: #4FFFB0;
+      --zeta-accent: #4FFFB0;
+      --zeta-light: #0A0E27;
+      --zeta-cream: #0A0E27;
+      --zeta-border: #1E293B;
+      --zeta-text: #F0F9FF;
+      --zeta-text-secondary: #CBD5E1;
+      --gradient-teal: linear-gradient(135deg, #0D2847 0%, #1A3A52 100%);
+      --gradient-hero: linear-gradient(135deg, #0D1B2A 0%, #0A0E27 100%);
+      --gradient-feature: linear-gradient(135deg, #0D2847 0%, #1A3A52 100%);
+    }}
+    html, body {{
+      margin: 0;
+      padding: 0;
+      font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont,
+        "Segoe UI", sans-serif;
+      color: var(--zeta-text);
+      background: #F8FAFB;
+      line-height: 1.6;
+    }}
+    body {{
+      padding: 0;
+    }}
+    .container {{
+      max-width: 1200px;
+      margin: 0 auto;
+      background: #ffffff;
+      box-shadow: 0 2px 20px rgba(0,0,0,0.08);
+      border-radius: 16px;
+      overflow: hidden;
+    }}
+    html[data-theme="dark"] .container {{
+      background: #0A0E27;
+      box-shadow: none;
+    }}
+    .hero {{
+      background: var(--gradient-hero);
+      color: #fff;
+      padding: 24px 32px 28px 32px;
+      text-align: left;
+      position: relative;
+      overflow: hidden;
+    }}
+    .hero::before {{
+      content: "";
+      position: absolute;
+      top: -80px;
+      right: -80px;
+      width: 260px;
+      height: 260px;
+      background: radial-gradient(circle, rgba(46,139,139,0.15) 0%, transparent 70%);
+      border-radius: 50%;
+      opacity: 0.9;
+    }}
+    .hero-content {{
+      position: relative;
+      z-index: 1;
+      display: flex;
+      gap: 20px;
+      align-items: center;
+    }}
+    .header-logo {{
+      width: 80px;
+      height: 80px;
+      object-fit: contain;
+      display: block;
+      filter: drop-shadow(0 3px 8px rgba(0,0,0,0.35));
+    }}
+    .hero-text h1 {{
+      font-size: 2.5rem;
+      margin: 0 0 4px 0;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.25);
+    }}
+    .hero-text .tagline {{
+      font-size: 1.05rem;
+      opacity: 0.95;
+      margin-bottom: 6px;
+      font-weight: 400;
+    }}
+    .hero-text .meta {{
+      font-size: 0.9rem;
+      opacity: 0.85;
+    }}
+    .demo-badge {{
+      display: inline-block;
+      background: rgba(46,139,139,0.25);
+      border: 1px solid rgba(46,139,139,0.55);
+      color: #fff;
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      margin-top: 6px;
+    }}
+    html[data-theme="dark"] .demo-badge {{
+      background: rgba(79,255,176,0.2);
+      border-color: rgba(79,255,176,0.45);
+      color: #4FFFB0;
+    }}
+
+    .section {{
+      padding: 32px 32px 36px 32px;
+      border-bottom: 1px solid var(--zeta-border);
+      background: var(--zeta-light);
+    }}
+    .section:nth-child(even) {{
+      background: var(--zeta-cream);
+    }}
+    .section-title {{
+      font-size: 1.7rem;
+      color: var(--zeta-primary);
+      border-bottom: 3px solid var(--zeta-accent);
+      padding-bottom: 10px;
+      margin-bottom: 24px;
+      font-weight: 700;
+    }}
+
+    .definition-box {{
+      background: #ffffff;
+      padding: 24px 22px;
+      border-radius: 10px;
+      border-left: 5px solid var(--zeta-accent);
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+      margin-bottom: 24px;
+    }}
+    html[data-theme="dark"] .definition-box {{
+      background: #0D1B2A;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.35);
+      color: #F0F9FF;
+    }}
+
+    .intro-cards {{
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 18px;
+    }}
+    .intro-card {{
+      background: #ffffff;
+      padding: 20px 18px;
+      border-radius: 10px;
+      border-left: 5px solid #2E8B8B;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+      transition: transform 0.18s ease, box-shadow 0.18s ease;
+    }}
+    html[data-theme="dark"] .intro-card {{
+      background: #0D1B2A;
+      border-left-color: #4FFFB0;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.35);
+    }}
+    .intro-card:hover {{
+      transform: translateY(-3px);
+      box-shadow: 0 8px 18px rgba(46,139,139,0.14);
+    }}
+    .intro-card h3 {{
+      font-size: 1.05rem;
+      color: #1A365D;
+      margin-bottom: 8px;
+      font-weight: 700;
+    }}
+    html[data-theme="dark"] .intro-card h3 {{
+      color: #4FFFB0;
+    }}
+    .intro-card p {{
+      font-size: 0.9rem;
+      color: var(--zeta-text-secondary);
+    }}
+
+    .two-column {{
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+    }}
+    .factor-card, .step-card, .feature-item {{
+      background: #ffffff;
+      padding: 20px 18px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+      border-left: 4px solid var(--zeta-accent);
+      font-size: 0.9rem;
+    }}
+    html[data-theme="dark"] .factor-card,
+    html[data-theme="dark"] .step-card,
+    html[data-theme="dark"] .feature-item {{
+      background: #0D1B2A;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.35);
+      border-left-color: #4FFFB0;
+      color: #CBD5E1;
+    }}
+    .step-number {{
+      display: inline-block;
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: #1A365D;
+      color: #fff;
+      line-height: 34px;
+      text-align: center;
+      font-weight: 700;
+      margin-bottom: 8px;
+      font-size: 0.9rem;
+    }}
+    html[data-theme="dark"] .step-number {{
+      background: #4FFFB0;
+      color: #0A0E27;
+    }}
+
+    .metrics {{
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }}
+    .metric-card {{
+      background: var(--gradient-teal);
+      padding: 18px 16px;
+      border-radius: 8px;
+      border-left: 4px solid var(--zeta-accent);
+      font-size: 0.9rem;
+    }}
+    .metric-value {{
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: #1A365D;
+    }}
+    html[data-theme="dark"] .metric-value {{
+      color: #4FFFB0;
+    }}
+
+    table {{
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      font-size: 0.85rem;
+    }}
+    thead {{
+      background: #1A365D;
+      color: #fff;
+    }}
+    th, td {{
+      padding: 8px 10px;
+      text-align: left;
+      border-bottom: 1px solid #E5E7EB;
+    }}
+    tbody tr:nth-child(even) {{
+      background: #F9FAFB;
+    }}
+
+    .toggle-wrapper {{
+      position: fixed;
+      top: 18px;
+      right: 26px;
+      z-index: 1000;
+    }}
+    .theme-toggle {{
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(46,139,139,0.35);
+      background: rgba(46,139,139,0.12);
+      color: #2E8B8B;
+      cursor: pointer;
+      font-size: 0.8rem;
+      font-weight: 600;
+      backdrop-filter: blur(6px);
+    }}
+    html[data-theme="dark"] .theme-toggle {{
+      border-color: rgba(79,255,176,0.35);
+      background: rgba(79,255,176,0.16);
+      color: #4FFFB0;
+    }}
+
+    @media (max-width: 768px) {{
+      .hero {{
+        padding: 16px 18px 20px 18px;
+      }}
+      .hero-content {{
+        flex-direction: row;
+        gap: 12px;
+      }}
+      .hero-text h1 {{
+        font-size: 1.9rem;
+      }}
+      .section {{
+        padding: 24px 20px 28px 20px;
+      }}
+    }}
+  </style>
+  <script>
+    function toggleTheme() {{
+      const html = document.documentElement;
+      const current = html.getAttribute('data-theme') || 'light';
+      const next = current === 'light' ? 'dark' : 'light';
+      html.setAttribute('data-theme', next);
+      localStorage.setItem('zci-theme', next);
+      const text = document.getElementById('themeText');
+      if (text) text.textContent = next === 'light' ? 'Dark' : 'Light';
+    }}
+    document.addEventListener('DOMContentLoaded', function () {{
+      const saved = localStorage.getItem('zci-theme') || 'light';
+      document.documentElement.setAttribute('data-theme', saved);
+      const text = document.getElementById('themeText');
+      if (text) text.textContent = saved === 'light' ? 'Dark' : 'Light';
+    }});
+  </script>
+</head>
+<body>
+  <div class="toggle-wrapper">
+    <button class="theme-toggle" onclick="toggleTheme()">
+      <span id="themeText">Dark</span> mode
+    </button>
+  </div>
+  <div class="container">
+    <section class="hero">
+      <div class="hero-content">
+        {logo_img_html}
+        <div class="hero-text">
+          <h1>Zeta Carbon Intelligence</h1>
+          <div class="tagline">GMSF-Aligned Carbon Footprint Calculator for Digital Advertising</div>
+          <div class="meta">Version 5.3 · Production-Ready · 12 Scenarios · AI Insights · PDF & Excel Exports</div>
+          <div class="demo-badge">Complete Preview – Upload your data in the sidebar to run full analysis</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2 class="section-title">What is Zeta Carbon Intelligence?</h2>
+      <div class="definition-box">
+        <p><strong>Zeta Carbon Intelligence (ZCI)</strong> is a harmonized, science-based carbon-accounting framework designed specifically for <strong>digital media campaigns</strong>. It applies a universal <strong>gCO₂PM standard</strong> – grams of CO₂ per 1,000 impressions – across all formats, devices, and supply paths.</p>
+      </div>
+      <div class="intro-cards">
+        <div class="intro-card">
+          <h3>Unified Framework</h3>
+          <p>Single, standardized gCO₂PM metric across Video, Display, Native, Audio, DOOH and all devices & supply paths.</p>
+        </div>
+        <div class="intro-card">
+          <h3>Comprehensive Factors</h3>
+          <p>Accounts for file size, creative format, AdTech path efficiency, device power, network type, grid intensity, and DOOH screen specs.</p>
+        </div>
+        <div class="intro-card">
+          <h3>Actionable Optimization</h3>
+          <p>Identify high-carbon inventory, benchmark against standards, and model 12 optimization scenarios.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2 class="section-title">How ZCI Measures Carbon Impact</h2>
+      <div class="two-column">
+        <div class="factor-card">
+          <h5>Device Type</h5>
+          <p>Desktop, mobile, and connected TV have different power profiles.</p>
+          <ul>
+            <li>Desktop: 30–50 W</li>
+            <li>Mobile: 3–5 W</li>
+            <li>CTV: 50–80 W</li>
+          </ul>
+        </div>
+        <div class="factor-card">
+          <h5>Network Type</h5>
+          <p>WiFi, 4G, 5G, and fixed lines differ in carbon intensity (gCO₂/MB).</p>
+          <ul>
+            <li>WiFi: 0.015 gCO₂/MB</li>
+            <li>4G: 0.035 gCO₂/MB</li>
+            <li>5G: 0.025 gCO₂/MB</li>
+          </ul>
+        </div>
+        <div class="factor-card">
+          <h5>Grid Intensity</h5>
+          <p>Electricity mix varies dramatically by country.</p>
+          <ul>
+            <li>France ≈ 50 gCO₂/kWh</li>
+            <li>USA ≈ 350 gCO₂/kWh</li>
+            <li>Poland ≈ 700 gCO₂/kWh</li>
+          </ul>
+        </div>
+        <div class="factor-card">
+          <h5>Creative Format</h5>
+          <p>File size and compression affect data transfer and emissions.</p>
+          <ul>
+            <li>Video HD ≈ 4.0 MB</li>
+            <li>Video SD ≈ 1.5 MB</li>
+            <li>Display: 0.1–0.3 MB</li>
+          </ul>
+        </div>
+        <div class="factor-card">
+          <h5>AdTech Path</h5>
+          <p>Supply path optimization tiers impact efficiency.</p>
+          <ul>
+            <li>Tier 1: Direct + Premium</li>
+            <li>Tier 2: Aggregators</li>
+            <li>Tier 3: Opaque / high carbon</li>
+          </ul>
+        </div>
+        <div class="factor-card">
+          <h5>Time of Day</h5>
+          <p>Peak hours have higher grid carbon intensity than off-peak.</p>
+          <ul>
+            <li>Peak (18–22): +30%</li>
+            <li>Off-peak: –20%</li>
+            <li>Night: –40%</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2 class="section-title">How to Use This Tool</h2>
+      <div class="two-column">
+        <div class="step-card">
+          <div class="step-number">1</div>
+          <h5>Prepare Your Data</h5>
+          <p>Export from DV360, Amazon or any ad platform. Required columns: Impressions, Device, Country. Optional: Creative Size/Type, Network, Exchange, Deal Type.</p>
+        </div>
+        <div class="step-card">
+          <div class="step-number">2</div>
+          <h5>Upload in the Sidebar</h5>
+          <p>Drop your CSV / TSV / Excel file in the Streamlit sidebar. ZCI handles large files up to 200+ MB.</p>
+        </div>
+        <div class="step-card">
+          <div class="step-number">3</div>
+          <h5>Auto-Enrich & Map</h5>
+          <p>ZCI auto-detects columns, fills missing factors with GMSF-aligned defaults and removes TOTAL / summary rows.</p>
+        </div>
+        <div class="step-card">
+          <div class="step-number">4</div>
+          <h5>Analyze & Optimize</h5>
+          <p>Review breakdowns, AI insights and 12 What-If scenarios. Export full data, Excel workbook and PDF report for stakeholders.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2 class="section-title">Key Features & Capabilities</h2>
+      <div class="two-column">
+        <div class="feature-item">
+          <h5>Multi-Format Coverage</h5>
+          <p>Video, Display, Native, Audio, DOOH with a unified gCO₂PM metric.</p>
+        </div>
+        <div class="feature-item">
+          <h5>AI-Driven Insights</h5>
+          <p>Automatic detection of high-carbon formats, markets and exchanges.</p>
+        </div>
+        <div class="feature-item">
+          <h5>Granular Breakdown</h5>
+          <p>Analysis by format, device, country, exchange, URL, and more.</p>
+        </div>
+        <div class="feature-item">
+          <h5>12 What-If Scenarios</h5>
+          <p>Model WiFi-first, SPO, compression, native adoption, IVT removal, green hours, and more.</p>
+        </div>
+        <div class="feature-item">
+          <h5>Data Quality & QA</h5>
+          <p>Automatic TOTAL row detection, duplicate removal and sanity checks.</p>
+        </div>
+        <div class="feature-item">
+          <h5>Complete Exports</h5>
+          <p>Excel (9 sheets), PDF report, and enriched CSV – ready to share with clients.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2 class="section-title">Demo Results Preview</h2>
+      <div class="metrics">
+        <div class="metric-card">
+          <div class="metric-label">Total Impressions</div>
+          <div class="metric-value">125.5M</div>
+          <div class="metric-unit">billable impressions</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Total Emissions</div>
+          <div class="metric-value">4,250.8</div>
+          <div class="metric-unit">kg CO₂e</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Carbon Intensity</div>
+          <div class="metric-value">87.5</div>
+          <div class="metric-unit">gCO₂ per 1K imps</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Data Transferred</div>
+          <div class="metric-value">312.4</div>
+          <div class="metric-unit">GB</div>
+        </div>
+      </div>
+      <p style="font-size:0.9rem;color:var(--zeta-text-secondary);margin-top:10px;">
+        These demo results illustrate how ZCI reports gCO₂PM, total emissions and high-level benchmarks before you upload your own campaign data.
+      </p>
+    </section>
+  </div>
+</body>
+</html>"""
+    return html
+
+# ═══════════════════════════════════════════════════════════════════════════
 # MAIN APP
 # ═══════════════════════════════════════════════════════════════════════════
 
@@ -585,6 +1134,7 @@ def main():
             help="Max 500MB - Uses chunked processing for large files"
         )
     
+  
     # Main content
     if uploaded_file is None:
         st.markdown("""
