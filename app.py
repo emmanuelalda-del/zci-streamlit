@@ -55,9 +55,9 @@ st.set_page_config(
     page_title="ZCI v5.2 - Carbon Intelligence",
     page_icon="🌱",
     layout="wide",
-    initial_sidebar_state="expanded",
-    theme="light"
+    initial_sidebar_state="expanded"
 )
+
 
 # ═══════════════════════════════════════════════════════════════════════════
 # ENHANCED CSS WITH ZETA DESIGN
