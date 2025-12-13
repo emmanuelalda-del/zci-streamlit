@@ -283,9 +283,6 @@ def infer_format(row, col_creative_size, col_creative_type):
         if val and val != "total":
             texts_checked.append(val)
     
-    if not texts_checked:
-        return "Display"
-    
     # Size pattern check FIRST
     for txt in texts_checked:
         match = re.search(r"(\d{2,4})x(\d{2,4})", txt)
